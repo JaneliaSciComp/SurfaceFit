@@ -13,9 +13,11 @@ import net.imglib2.outofbounds.OutOfBounds;
 import net.imglib2.outofbounds.OutOfBoundsConstantValueFactory;
 import net.imglib2.outofbounds.OutOfBoundsFactory;
 import net.imglib2.type.NativeType;
+import net.imglib2.type.numeric.IntegerType;
 import net.imglib2.type.numeric.NumericType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.integer.ByteType;
+import net.imglib2.type.numeric.integer.IntType;
 import net.imglib2.type.numeric.real.FloatType;
 import graphcut.GraphCut;
 import graphcut.Terminal;
@@ -62,7 +64,7 @@ import graphcut.Terminal;
  */
 
 
-public class MinCostZSurface < T extends RealType<T> & NumericType< T > & NativeType< T > >{
+public class MinCostZSurface < T extends RealType<T> >{
 
 
 	private int n_surface;
@@ -519,7 +521,33 @@ public class MinCostZSurface < T extends RealType<T> & NumericType< T > & Native
 		return depth_map;
 	}
 	
-	
+	public Img< IntType > get_Altitude_MapInt(int Surf_Id)
+	{
+		if( Surf_Id>n_surface | Surf_Id<=0 | !isProcessed )
+			return null;
+
+		
+		long Width = dimensions[0];
+		long Slice = dimensions[0]*dimensions[1];
+		int nNodes = (int)(Slice*dimensions[2]);
+		
+		final ImgFactory< IntType > imgFactory2 = new ArrayImgFactory< IntType >( new IntType() );
+		final Img< IntType > depth_map = imgFactory2.create( new long[] {dimensions[0],dimensions[1]} );
+		RandomAccess< IntType > depth_mapRA = depth_map.randomAccess();
+		
+		long[] position = new long[2];
+		for (int idx = 0; idx<nNodes; idx++)
+		{
+			position[0] = idx%Width;
+			position[1] = (idx%Slice)/Width;
+			depth_mapRA.setPosition(new long[] {position[0],position[1]} );
+			
+			if (graphCut_Solver.getTerminal(idx+nNodes*(Surf_Id-1)) == Terminal.FOREGROUND)
+				depth_mapRA.get().add( new IntType( 1 ) );
+		}
+
+		return depth_map;
+	}
 	
 	/**
 	 * This methods produce a binary volume where pixel on top (bottom) the surface are 0 (255)
