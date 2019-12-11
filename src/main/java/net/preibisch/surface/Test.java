@@ -22,7 +22,7 @@ public class Test
 	{
 		new ImageJ();
 
-		final Img< FloatType > img = Util.openAs32Bit( new File( "/Users/spreibi/Documents/Janelia/Projects/Male CNS+VNC Alignment/Surface/flatten/tmp-flattening-level200/resampled_orth_upper.tif" ) );
+		final Img< FloatType > img = Util.openAs32Bit( new File( "resampled_orth_upper.tif" ) );
 
 		final Img< IntType > surface = process2( img, 5, 40, 20 );
 
