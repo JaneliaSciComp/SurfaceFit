@@ -79,19 +79,20 @@ public class SurfaceFitCommand implements Command {
             botCur.get().set(botViewCur.get().getRealFloat());
         }
 
-        FinalInterval topHalfInterval = Intervals.createMinMax(0, 0, img.dimension(2)/2-1, img.dimension(0)-1, img.dimension(1)-1, img.dimension(2)-1);
-        Img<FloatType> topImg = ops.create().img(topHalfInterval, new FloatType());
+        FinalInterval topHalfInterval = Intervals.createMinMax(0, 0, img.dimension(2)/2, img.dimension(0)-1, img.dimension(1)-1, img.dimension(2)-1);
+        FinalInterval topIntervalSize = Intervals.createMinMax(0, 0, 0, topHalfInterval.dimension(0)-1, topHalfInterval.dimension(1)-1, topHalfInterval.dimension(2)-1);
+        Img<FloatType> topImg = ops.create().img(topIntervalSize, new FloatType());
 
         IterableInterval<UnsignedByteType> topView = Views.interval(img, topHalfInterval);
         Cursor<UnsignedByteType> topViewCur = topView.cursor();
         Cursor<FloatType> topCur = topImg.cursor();
-        while(botCur.hasNext()) {
-            botCur.fwd();
-            botViewCur.fwd();
-            botCur.get().set(botViewCur.get().getRealFloat());
+        while(topCur.hasNext()) {
+            topCur.fwd();
+            topViewCur.fwd();
+            topCur.get().set(topViewCur.get().getRealFloat());
         }
 
-        img = botImg;
+        img = topImg;
 
 		final Img<IntType> surface = process2( img, 5, 40, 20 );
 
