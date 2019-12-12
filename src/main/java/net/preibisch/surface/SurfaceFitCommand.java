@@ -63,36 +63,10 @@ public class SurfaceFitCommand implements Command {
         IJ.run(imp, "Reslice [/]...", "output=1.000 start=Top avoid");
         imp = IJ.getImage();
         System.out.println("Using as imp: " + imp);
-
         Img img = ImageJFunctions.wrap(imp);
 
-        //FinalInterval botHalfInterval = Intervals.createMinMax(0, 0, 0, img.dimension(0)-1, img.dimension(1)/2-1, img.dimension(2)-1);
-        FinalInterval botHalfInterval = Intervals.createMinMax(0, 0, 0, img.dimension(0)-1, img.dimension(1)-1, img.dimension(2)/2-1);
-        Img<FloatType> botImg = ops.create().img(botHalfInterval, new FloatType());
-
-        IterableInterval<UnsignedByteType> botView = Views.interval(img, botHalfInterval);
-        Cursor<UnsignedByteType> botViewCur = botView.cursor();
-        Cursor<FloatType> botCur = botImg.cursor();
-        while(botCur.hasNext()) {
-            botCur.fwd();
-            botViewCur.fwd();
-            botCur.get().set(botViewCur.get().getRealFloat());
-        }
-
-        FinalInterval topHalfInterval = Intervals.createMinMax(0, 0, img.dimension(2)/2, img.dimension(0)-1, img.dimension(1)-1, img.dimension(2)-1);
-        FinalInterval topIntervalSize = Intervals.createMinMax(0, 0, 0, topHalfInterval.dimension(0)-1, topHalfInterval.dimension(1)-1, topHalfInterval.dimension(2)-1);
-        Img<FloatType> topImg = ops.create().img(topIntervalSize, new FloatType());
-
-        IterableInterval<UnsignedByteType> topView = Views.interval(img, topHalfInterval);
-        Cursor<UnsignedByteType> topViewCur = topView.cursor();
-        Cursor<FloatType> topCur = topImg.cursor();
-        while(topCur.hasNext()) {
-            topCur.fwd();
-            topViewCur.fwd();
-            topCur.get().set(topViewCur.get().getRealFloat());
-        }
-
-        img = topImg;
+        img = getBotImg(img);
+        //img = getTopImg(img);
 
 		final Img<IntType> surface = process2( img, 5, 40, 20 );
 
@@ -107,15 +81,49 @@ public class SurfaceFitCommand implements Command {
 		input.show();
 
         ImagePlus surfaceImp = Util.getImagePlusInstance(surface);
-		surfaceImp.show();
+        surfaceImp.setTitle("Surface");
+		//surfaceImp.show();
 
         ImagePlus rendererSurfaceImp = Util.getImagePlusInstance(rendererSurface);
         rendererSurfaceImp.setTitle("Generated surface");
-		rendererSurfaceImp.show();
+		//rendererSurfaceImp.show();
 
 		IJ.run(input, "Reslice [/]...", "output=1.000 start=Top avoid");
 		IJ.run(rendererSurfaceImp, "Reslice [/]...", "output=1.000 start=Top avoid");
+
+
 		//IJ.run("Merge Channels...", "c2=[Reslice of Target] c6=[Reslice of Generated] create keep");
+    }
+
+    public Img getBotImg(Img img) {
+        FinalInterval botHalfInterval = Intervals.createMinMax(0, 0, 0, img.dimension(0)-1, img.dimension(1)-1, img.dimension(2)/2-1);
+        Img<FloatType> botImg = ops.create().img(botHalfInterval, new FloatType());
+
+        IterableInterval<UnsignedByteType> botView = Views.interval(img, botHalfInterval);
+        Cursor<UnsignedByteType> botViewCur = botView.cursor();
+        Cursor<FloatType> botCur = botImg.cursor();
+        while(botCur.hasNext()) {
+            botCur.fwd();
+            botViewCur.fwd();
+            botCur.get().set(botViewCur.get().getRealFloat());
+        }
+        return botImg;
+    }
+
+    public Img getTopImg(Img img) {
+        FinalInterval topHalfInterval = Intervals.createMinMax(0, 0, img.dimension(2)/2, img.dimension(0)-1, img.dimension(1)-1, img.dimension(2)-1);
+        FinalInterval topIntervalSize = Intervals.createMinMax(0, 0, 0, topHalfInterval.dimension(0)-1, topHalfInterval.dimension(1)-1, topHalfInterval.dimension(2)-1);
+        Img<FloatType> topImg = ops.create().img(topIntervalSize, new FloatType());
+
+        IterableInterval<UnsignedByteType> topView = Views.interval(img, topHalfInterval);
+        Cursor<UnsignedByteType> topViewCur = topView.cursor();
+        Cursor<FloatType> topCur = topImg.cursor();
+        while(topCur.hasNext()) {
+            topCur.fwd();
+            topViewCur.fwd();
+            topCur.get().set(topViewCur.get().getRealFloat());
+        }
+        return topImg;
     }
 
     public static void main(String[] args) {
