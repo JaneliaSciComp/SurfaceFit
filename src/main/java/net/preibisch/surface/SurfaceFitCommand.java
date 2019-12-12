@@ -60,11 +60,14 @@ public class SurfaceFitCommand implements Command {
         ImagePlus imp = FolderOpener.open(inputDirectory, " file=tif");
         imp.setTitle("Target");
         // Reslice image
-        //IJ.run(imp, "Reslice [/]...", "output=1.000 start=Top avoid");
+        IJ.run(imp, "Reslice [/]...", "output=1.000 start=Top avoid");
+        imp = IJ.getImage();
+        System.out.println("Using as imp: " + imp);
 
         Img img = ImageJFunctions.wrap(imp);
 
-        FinalInterval botHalfInterval = Intervals.createMinMax(0, 0, 0, img.dimension(0)-1, img.dimension(1)/2-1, img.dimension(2)-1);
+        //FinalInterval botHalfInterval = Intervals.createMinMax(0, 0, 0, img.dimension(0)-1, img.dimension(1)/2-1, img.dimension(2)-1);
+        FinalInterval botHalfInterval = Intervals.createMinMax(0, 0, 0, img.dimension(0)-1, img.dimension(1)-1, img.dimension(2)/2-1);
         Img<FloatType> botImg = ops.create().img(botHalfInterval, new FloatType());
 
         IterableInterval<UnsignedByteType> botView = Views.interval(img, botHalfInterval);
@@ -76,76 +79,42 @@ public class SurfaceFitCommand implements Command {
             botCur.get().set(botViewCur.get().getRealFloat());
         }
 
-        FinalInterval topHalfInterval = Intervals.createMinMax(0, img.dimension(1)/2-1, 0, img.dimension(0)-1, img.dimension(1)-1, img.dimension(2)-1);
+        FinalInterval topHalfInterval = Intervals.createMinMax(0, 0, img.dimension(2)/2-1, img.dimension(0)-1, img.dimension(1)-1, img.dimension(2)-1);
         Img<FloatType> topImg = ops.create().img(topHalfInterval, new FloatType());
+
+        IterableInterval<UnsignedByteType> topView = Views.interval(img, topHalfInterval);
+        Cursor<UnsignedByteType> topViewCur = topView.cursor();
+        Cursor<FloatType> topCur = topImg.cursor();
+        while(botCur.hasNext()) {
+            botCur.fwd();
+            botViewCur.fwd();
+            botCur.get().set(botViewCur.get().getRealFloat());
+        }
 
         img = botImg;
 
 		final Img<IntType> surface = process2( img, 5, 40, 20 );
 
-		final Img<FloatType> rendererSurface = img.factory().create( img );
+		final Img< FloatType > rendererSurface = img.factory().create( img );
 
 		renderDepthMap( rendererSurface, surface );
 
 		//Gauss3.gauss( 0.7, Views.extendMirrorSingle( rendererSurface ), rendererSurface );
 
-        ImagePlus source = Util.getImagePlusInstance(img);
-        source.setTitle("Input");
-		source.show();
+        ImagePlus input = Util.getImagePlusInstance(img);
+        input.setTitle("Target");
+		input.show();
 
-		float factor = originalDimX / surface.dimension(0) / 10;
+        ImagePlus surfaceImp = Util.getImagePlusInstance(surface);
+		surfaceImp.show();
 
-		Cursor<IntType> cur = surface.cursor();
-		while( cur.hasNext() ){
-		    cur.fwd();
-		    cur.get().mul(factor);
-        }
+        ImagePlus rendererSurfaceImp = Util.getImagePlusInstance(rendererSurface);
+        rendererSurfaceImp.setTitle("Generated surface");
+		rendererSurfaceImp.show();
 
-        ImagePlus impSurface = Util.getImagePlusInstance(surface);
-        impSurface.setTitle("Generated surface");
-
-//        IJ.run(impSurface, "32-bit", "");
-//        IJ.run(impSurface, "Rotate 90 Degrees Left", "");
-//        IJ.run(impSurface, "Flip Horizontally", "");
-//        IJ.run(impSurface, "Scale...", "x=- y=- width=9007 height=9599 interpolation=Bicubic average create");
-
-		impSurface.show();
-
-        ImagePlus impRenderSurface = Util.getImagePlusInstance(rendererSurface);
-        impRenderSurface.setTitle("RendererSurface");
-        impRenderSurface.show();
-
-        //IJ.run(impRenderSurface, "Reslice [/]...", "output=1.000 start=Top avoid");
-
-        IJ.run("Merge Channels...", "c2=Input c6=RendererSurface create keep");
-
-//        Dataset dagmar;
-//        try {
-//            dagmar = dataset.open(targetImage);
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//            return;
-//        }
-//        ImgPlus<FloatType> dagmarImg = dagmar.typedImg(new FloatType());
-//
-//        Cursor<FloatType> dagmarCur = dagmarImg.cursor();
-//        while( dagmarCur.hasNext() ) {
-//            dagmarCur.fwd();
-//            dagmarCur.get().mul(0.1f);
-//        }
-//
-//		final Img<FloatType> dagmarRendererSurface = img.factory().create( img );
-//		renderDepthMap2( dagmarRendererSurface, dagmarImg );
-//		ImagePlus impDagmarSurface = Util.getImagePlusInstance(dagmarRendererSurface);
-//        impDagmarSurface.setTitle("DagmarSurface");
-//        impDagmarSurface.show();
-//
-//        //IJ.run("Merge Channels...", "c2=Input c6=RendererSurface create keep");
-//        IJ.run("Merge Channels...", "c1=Input c2=RendererSurface c3=DagmarSurface create keep");
-
-        //String outFilename = outputDirectory + "test.h5";
-
-        //HDF5ImageJ.hdf5write( impRenderSurface, outFilename, "volume");
+		IJ.run(input, "Reslice [/]...", "output=1.000 start=Top avoid");
+		IJ.run(rendererSurfaceImp, "Reslice [/]...", "output=1.000 start=Top avoid");
+		//IJ.run("Merge Channels...", "c2=[Reslice of Target] c6=[Reslice of Generated] create keep");
     }
 
     public static void main(String[] args) {
