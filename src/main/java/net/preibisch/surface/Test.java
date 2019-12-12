@@ -55,6 +55,25 @@ public class Test
 		}
 	}
 
+	public static < T extends RealType<T> > void renderDepthMap2( final RandomAccessibleInterval< T > render, final RandomAccessibleInterval< T > surface )
+	{
+		final Cursor< T > c = Views.iterable( surface ).localizingCursor();
+		final RandomAccess< T > r = render.randomAccess();
+
+		final long[] l = new long[ 3 ];
+
+		while (c.hasNext() )
+		{
+			c.fwd();
+			c.localize( l );
+			l[ 2 ] = (long) (c.get().getRealFloat() - 1);// this offset is necessary to match the image
+			System.out.println(l[ 2 ]);
+
+			r.setPosition( l );
+			r.get().setOne();
+		}
+	}
+
 	public static < T extends RealType<T> > Img< IntType > process2(
 			final Img< T > cost_orig,
 			final int max_dz, // max delta z, default = 1, constraint on the surface altitude change from one pixel to another
