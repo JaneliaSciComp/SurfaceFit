@@ -3,6 +3,7 @@ package net.preibisch.surface;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.plugin.FolderOpener;
+import net.imagej.ImageJ;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.numeric.RealType;
@@ -11,6 +12,8 @@ import net.imglib2.type.numeric.real.FloatType;
 import org.scijava.command.Command;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
+import sc.fiji.hdf5.HDF5ImageJ;
+import sc.fiji.hdf5.HDF5_Writer_Vibez;
 
 import static net.preibisch.surface.Test.process2;
 import static net.preibisch.surface.Test.renderDepthMap;
@@ -21,7 +24,7 @@ public class SurfaceFitCommand implements Command {
     private String inputDirectory = "/home/kharrington/Data/SEMA/Z1217_19m/Sec04/flatten/tmp-flattening-level200/resampled/";
 
     //@Parameter
-    private String outputDirectory;
+    private String outputDirectory = "/home/kharrington/Data/SEMA/Z1217_19m/Sec04/flatten/tmp-flattening-level200/heightSurf/";
 
     //@Parameter
     private long originalDimX;
@@ -48,8 +51,22 @@ public class SurfaceFitCommand implements Command {
 
 		Util.getImagePlusInstance( img ).show();
 		Util.getImagePlusInstance( surface ).show();
-		Util.getImagePlusInstance( rendererSurface ).show();
 
-		//IJ.run(imp, "Save to HDF5 File (new or replace)...", "save=/home/kharrington/Data/SEMA/Z1217_19m/Sec04/flatten/tmp-flattening-level200/heightSurf/test.h5");
+        ImagePlus impRenderSurface = Util.getImagePlusInstance(rendererSurface);
+
+        IJ.run(impRenderSurface, "Reslice [/]...", "output=1.000 start=Top avoid");
+
+        impRenderSurface.show();
+
+        String outFilename = outputDirectory + "test.h5";
+
+        HDF5ImageJ.hdf5write( impRenderSurface, outFilename, "volume");
+    }
+
+    public static void main(String[] args) {
+        ImageJ imagej = new ImageJ();
+        imagej.ui().showUI();
+
+        imagej.command().run(SurfaceFitCommand.class, true);
     }
 }
