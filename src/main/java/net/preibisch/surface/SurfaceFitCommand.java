@@ -4,6 +4,7 @@ import ij.IJ;
 import ij.ImagePlus;
 import ij.plugin.FolderOpener;
 import net.imagej.ImageJ;
+import net.imglib2.Cursor;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.numeric.RealType;
@@ -26,11 +27,14 @@ public class SurfaceFitCommand implements Command {
     //@Parameter
     private String outputDirectory = "/home/kharrington/Data/SEMA/Z1217_19m/Sec04/flatten/tmp-flattening-level200/heightSurf/";
 
-    //@Parameter
-    private long originalDimX;
+    //private String targetImage = "/home/kharrington/Data/SEMA/Z1217_19m/Sec04/flatten/tmp-flattening-level200/heightSurf/heightSurf200-bot.tif";
+    private String targetImage = "/home/kharrington/Data/SEMA/Z1217_19m/Sec04/flatten/tmp-flattening-level200/heightSurf/heightSurf200-top.tif";
 
     //@Parameter
-    private long originalDimZ;
+    private long originalDimX = 9007;
+
+    //@Parameter
+    private long originalDimZ = 9599;
 
     @Override
     public void run() {
@@ -49,18 +53,42 @@ public class SurfaceFitCommand implements Command {
 
 		//Gauss3.gauss( 0.7, Views.extendMirrorSingle( rendererSurface ), rendererSurface );
 
-		Util.getImagePlusInstance( img ).show();
-		Util.getImagePlusInstance( surface ).show();
+        ImagePlus source = Util.getImagePlusInstance(img);
+        source.setTitle("Input");
+		source.show();
+
+		float factor = originalDimX / surface.dimension(0) / 10;
+
+		Cursor<IntType> cur = surface.cursor();
+		while( cur.hasNext() ){
+		    cur.fwd();
+		    cur.get().mul(factor);
+        }
+
+        ImagePlus impSurface = Util.getImagePlusInstance(surface);
+        impSurface.setTitle("Generated surface");
+
+//        IJ.run(impSurface, "32-bit", "");
+//        IJ.run(impSurface, "Rotate 90 Degrees Left", "");
+//        IJ.run(impSurface, "Flip Horizontally", "");
+//        IJ.run(impSurface, "Scale...", "x=- y=- width=9007 height=9599 interpolation=Bicubic average create");
+
+		impSurface.show();
 
         ImagePlus impRenderSurface = Util.getImagePlusInstance(rendererSurface);
-
-        IJ.run(impRenderSurface, "Reslice [/]...", "output=1.000 start=Top avoid");
-
         impRenderSurface.show();
 
-        String outFilename = outputDirectory + "test.h5";
+        //IJ.run(impRenderSurface, "Reslice [/]...", "output=1.000 start=Top avoid");
 
-        HDF5ImageJ.hdf5write( impRenderSurface, outFilename, "volume");
+        ImagePlus target = IJ.openImage(targetImage);
+        target.setTitle("Target");
+        target.show();
+
+        //IJ.run("Merge Channels...", "c2=Target c6=[Generated surface-1] create keep");
+
+        //String outFilename = outputDirectory + "test.h5";
+
+        //HDF5ImageJ.hdf5write( impRenderSurface, outFilename, "volume");
     }
 
     public static void main(String[] args) {
