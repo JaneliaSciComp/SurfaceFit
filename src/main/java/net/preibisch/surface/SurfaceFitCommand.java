@@ -29,6 +29,7 @@ import org.scijava.Context;
 import org.scijava.command.Command;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
+import sc.fiji.hdf5.HDF5ImageJ;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -96,6 +97,7 @@ public class SurfaceFitCommand implements Command {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        HDF5ImageJ.hdf5write(botSurfaceMap, outputDirectory.substring(0,outputDirectory.length()-3) + "h5", "/" + outputGroupname + "-bot");// FIXME hacky
 
         // Process top
         ImagePlus topSurfaceMap = getScaledSurfaceMap(getTopImg(img));
@@ -107,6 +109,7 @@ public class SurfaceFitCommand implements Command {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        HDF5ImageJ.hdf5write(topSurfaceMap, outputDirectory.substring(0,outputDirectory.length()-3) + "h5", "/" + outputGroupname + "-top");// FIXME hacky
     }
 
     private ImagePlus getScaledSurfaceMap(Img img) {
@@ -142,7 +145,11 @@ public class SurfaceFitCommand implements Command {
             surfaceCur.get().mul(heightScaleFactor);
         }
 
-        // TODO smoothing before upsampling
+        // Smooth image
+
+        //surfaceImp.close();
+        RandomAccessibleInterval<RealType> res = ops.filter().gauss(surfaceImg, 2);// this parameter differs from Dagmar's
+        surfaceImp = ImageJFunctions.wrap(res, "Surface");
 
         // Upsample image
 		IJ.run(surfaceImp, "Scale...", "x=- y=- width=" + originalDimX + " height=" + originalDimZ + " interpolation=Bicubic average create title=ScaleSurface");
