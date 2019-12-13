@@ -4,10 +4,9 @@ import ij.IJ;
 import ij.ImagePlus;
 import ij.WindowManager;
 import ij.plugin.FolderOpener;
+import io.scif.SCIFIOService;
 import io.scif.services.DatasetIOService;
-import net.imagej.Dataset;
 import net.imagej.ImageJ;
-import net.imagej.ImgPlus;
 import net.imagej.ops.OpService;
 import net.imglib2.Cursor;
 import net.imglib2.FinalInterval;
@@ -15,17 +14,19 @@ import net.imglib2.IterableInterval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
-import net.imglib2.type.Type;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.integer.IntType;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
-import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
-import org.scijava.SciJava;
+import org.janelia.saalfeldlab.n5.Bzip2Compression;
+import org.janelia.saalfeldlab.n5.N5FSWriter;
+import org.janelia.saalfeldlab.n5.N5Writer;
+import org.janelia.saalfeldlab.n5.RawCompression;
+import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
+import org.scijava.Context;
 import org.scijava.command.Command;
-import org.scijava.io.IOService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 
@@ -53,13 +54,16 @@ public class SurfaceFitCommand implements Command {
     private String outputBasename = "heightSurf200";
 
     @Parameter
-    private IOService io;
+    private SCIFIOService io;
 
     @Parameter
     private DatasetIOService dataset;
 
     @Parameter
     private OpService ops;
+
+    @Parameter
+    private Context context;
 
     @Override
     public void run() {
@@ -72,23 +76,33 @@ public class SurfaceFitCommand implements Command {
         Img img = ImageJFunctions.wrap(imp);
 
         ImagePlus botSurfaceMap = getScaledSurfaceMap(getBotImg(img));
-        Img botSurfaceMapImg = ImageJFunctions.wrap(botSurfaceMap);
+        N5Writer n5 = null;
         try {
-            io.save(botSurfaceMapImg, outputDirectory + outputBasename + "-bot.tif");
-            System.out.println("Writing: " + outputDirectory + outputBasename + "-bot.tif");
+            n5 = new N5FSWriter(outputDirectory + outputBasename);
+            System.out.println("N5 location: " + outputDirectory + outputBasename);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        RandomAccessibleInterval botSurfaceImg = ImageJFunctions.wrap(botSurfaceMap);
+        try {
+            //N5Utils.save(botSurfaceImg, n5, "/BotHeightmap", new int[]{512,512}, new Bzip2Compression());
+            N5Utils.save(botSurfaceImg, n5, "/BotHeightmap", new int[]{512,512}, new RawCompression());
+            System.out.println("Done writing bot");
         } catch (IOException e) {
             e.printStackTrace();
         }
         //IJ.save(botSurfaceMap, outputDirectory + outputBasename + "-bot.tif");
 
         ImagePlus topSurfaceMap = getScaledSurfaceMap(getTopImg(img));
-        Img topSurfaceMapImg = ImageJFunctions.wrap(topSurfaceMap);
+        RandomAccessibleInterval topSurfaceImg = ImageJFunctions.wrap(topSurfaceMap);
         try {
-            io.save(topSurfaceMapImg, outputDirectory + outputBasename + "-top.tif");
-            System.out.println("Writing: " + outputDirectory + outputBasename + "-top.tif");
+            //N5Utils.save(topSurfaceImg, n5, "/TopHeightmap", new int[]{512,512}, new Bzip2Compression());
+            N5Utils.save(topSurfaceImg, n5, "/TopHeightmap", new int[]{512,512}, new RawCompression());
+            System.out.println("Done writing top");
         } catch (IOException e) {
             e.printStackTrace();
         }
+
         //IJ.save(topSurfaceMap, outputDirectory + outputBasename + "-top.tif");
     }
 
@@ -120,6 +134,9 @@ public class SurfaceFitCommand implements Command {
 
         ImagePlus scaledSurfaceImp = WindowManager.getImage("ScaleSurface");
         scaledSurfaceImp.setTitle("ScaleSurfaceFetched");
+
+        //Img<RealType> surfaceImg = ImageJFunctions.wrapReal(scaledSurfaceImp);
+
         return scaledSurfaceImp;
     }
 
