@@ -42,7 +42,7 @@ public class SurfaceFitCommand implements Command {
     private String inputDirectory = "/home/kharrington/Data/SEMA/Z1217_19m/Sec04/flatten/tmp-flattening-level200/resampled/";
 
     @Parameter
-    private String outputDirectory = "/home/kharrington/Data/SEMA/Z1217_19m/Sec04/flatten/tmp-flattening-level200/heightSurf/";
+    private String outputDirectory = "/home/kharrington/Data/SEMA/Z1217_19m/Sec04/heightSurfaces.n5/";
 
     @Parameter
     private long originalDimX = 9007;
@@ -51,7 +51,7 @@ public class SurfaceFitCommand implements Command {
     private long originalDimZ = 9599;
 
     @Parameter
-    private String outputBasename = "heightSurf200";
+    private String outputGroupname = "level200";
 
     @Parameter
     private SCIFIOService io;
@@ -78,32 +78,29 @@ public class SurfaceFitCommand implements Command {
         ImagePlus botSurfaceMap = getScaledSurfaceMap(getBotImg(img));
         N5Writer n5 = null;
         try {
-            n5 = new N5FSWriter(outputDirectory + outputBasename);
-            System.out.println("N5 location: " + outputDirectory + outputBasename);
+            n5 = new N5FSWriter(outputDirectory);
+            System.out.println("N5 location: " + outputDirectory);
         } catch (IOException e) {
             e.printStackTrace();
         }
         RandomAccessibleInterval botSurfaceImg = ImageJFunctions.wrap(botSurfaceMap);
         try {
             //N5Utils.save(botSurfaceImg, n5, "/BotHeightmap", new int[]{512,512}, new Bzip2Compression());
-            N5Utils.save(botSurfaceImg, n5, "/BotHeightmap", new int[]{512,512}, new RawCompression());
+            N5Utils.save(botSurfaceImg, n5, "/" + outputGroupname + "-bot", new int[]{512,512}, new RawCompression());
             System.out.println("Done writing bot");
         } catch (IOException e) {
             e.printStackTrace();
         }
-        //IJ.save(botSurfaceMap, outputDirectory + outputBasename + "-bot.tif");
 
         ImagePlus topSurfaceMap = getScaledSurfaceMap(getTopImg(img));
         RandomAccessibleInterval topSurfaceImg = ImageJFunctions.wrap(topSurfaceMap);
         try {
             //N5Utils.save(topSurfaceImg, n5, "/TopHeightmap", new int[]{512,512}, new Bzip2Compression());
-            N5Utils.save(topSurfaceImg, n5, "/TopHeightmap", new int[]{512,512}, new RawCompression());
+            N5Utils.save(topSurfaceImg, n5, "/" + outputGroupname + "-top", new int[]{512,512}, new RawCompression());
             System.out.println("Done writing top");
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-        //IJ.save(topSurfaceMap, outputDirectory + outputBasename + "-top.tif");
     }
 
     private ImagePlus getScaledSurfaceMap(Img img) {
@@ -178,10 +175,10 @@ public class SurfaceFitCommand implements Command {
         Map<String, Object> argmap = new HashMap<>();
         argmap.put("inputDirectory", "/nrs/flyem/alignment/Z1217-19m/VNC/Sec04/flatten/tmp-flattening-level200/resampled/");
         //argmap.put("outputDirectory", "/nrs/flyem/alignment/Z1217-19m/VNC/Sec04/flatten/tmp-flattening-level200/heightSurf/");
-        argmap.put("outputDirectory", "/home/kharrington/Data/SEMA/Z1217-19m/VNC/Sec04/flatten/tmp-flattening-level200/heightSurf/");
+        argmap.put("outputDirectory", "/home/kharrington/Data/SEMA/Z1217-19m/VNC/Sec04/heightSurfaces.n5/");
         argmap.put("originalDimX", 23254);
         argmap.put("originalDimZ", 26358);
-        argmap.put("outputBasename", "heightSurf200_v2");
+        argmap.put("outputGroupname", "level200");
 
 //        argmap.put("inputDirectory", args[1]);
 //        argmap.put("outputDirectory", args[2]);
