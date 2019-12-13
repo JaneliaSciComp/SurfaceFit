@@ -65,6 +65,8 @@ public class SurfaceFitCommand implements Command {
     @Parameter
     private Context context;
 
+    private int[] n5BlockSize = new int[]{512,512};
+
     @Override
     public void run() {
         // Open image sequence from input directory
@@ -75,7 +77,7 @@ public class SurfaceFitCommand implements Command {
         imp = IJ.getImage();
         Img img = ImageJFunctions.wrap(imp);
 
-        ImagePlus botSurfaceMap = getScaledSurfaceMap(getBotImg(img));
+        // n5 prep
         N5Writer n5 = null;
         try {
             n5 = new N5FSWriter(outputDirectory);
@@ -83,20 +85,24 @@ public class SurfaceFitCommand implements Command {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        // Process bottom
+        ImagePlus botSurfaceMap = getScaledSurfaceMap(getBotImg(img));
         RandomAccessibleInterval botSurfaceImg = ImageJFunctions.wrap(botSurfaceMap);
         try {
             //N5Utils.save(botSurfaceImg, n5, "/BotHeightmap", new int[]{512,512}, new Bzip2Compression());
-            N5Utils.save(botSurfaceImg, n5, "/" + outputGroupname + "-bot", new int[]{512,512}, new RawCompression());
+            N5Utils.save(botSurfaceImg, n5, "/" + outputGroupname + "-bot", n5BlockSize, new RawCompression());
             System.out.println("Done writing bot");
         } catch (IOException e) {
             e.printStackTrace();
         }
 
+        // Process top
         ImagePlus topSurfaceMap = getScaledSurfaceMap(getTopImg(img));
         RandomAccessibleInterval topSurfaceImg = ImageJFunctions.wrap(topSurfaceMap);
         try {
             //N5Utils.save(topSurfaceImg, n5, "/TopHeightmap", new int[]{512,512}, new Bzip2Compression());
-            N5Utils.save(topSurfaceImg, n5, "/" + outputGroupname + "-top", new int[]{512,512}, new RawCompression());
+            N5Utils.save(topSurfaceImg, n5, "/" + outputGroupname + "-top", n5BlockSize, new RawCompression());
             System.out.println("Done writing top");
         } catch (IOException e) {
             e.printStackTrace();
@@ -105,34 +111,43 @@ public class SurfaceFitCommand implements Command {
 
     private ImagePlus getScaledSurfaceMap(Img img) {
         final Img<IntType> surface = process2( img, 5, 40, 20 );
-		final Img< FloatType > rendererSurface = img.factory().create( img );
-		renderDepthMap( rendererSurface, surface );
+
+
+//		final Img< FloatType > rendererSurface = img.factory().create( img );
+//		renderDepthMap( rendererSurface, surface );
 
 		//Gauss3.gauss( 0.7, Views.extendMirrorSingle( rendererSurface ), rendererSurface );
-        ImagePlus input = Util.getImagePlusInstance(img);
-        input.setTitle("Target");
-		input.show();
+//        ImagePlus input = Util.getImagePlusInstance(img);
+//        input.setTitle("Target");
+//		//input.show();
 
         ImagePlus surfaceImp = Util.getImagePlusInstance(surface);
         surfaceImp.setTitle("Surface");
-		surfaceImp.show();
+		//surfaceImp.show();
 
-        ImagePlus rendererSurfaceImp = Util.getImagePlusInstance(rendererSurface);
-        rendererSurfaceImp.setTitle("Generated surface");
+//        ImagePlus rendererSurfaceImp = Util.getImagePlusInstance(rendererSurface);
+//        rendererSurfaceImp.setTitle("Generated surface");
 		//rendererSurfaceImp.show();
 
-		IJ.run(input, "Reslice [/]...", "output=1.000 start=Top avoid");
-		IJ.run(rendererSurfaceImp, "Reslice [/]...", "output=1.000 start=Top avoid");
+        // To help with debugging
+//		IJ.run(input, "Reslice [/]...", "output=1.000 start=Top avoid");
+//		IJ.run(rendererSurfaceImp, "Reslice [/]...", "output=1.000 start=Top avoid");
 
-		// TODO rescale height/Z values
-		// TODO smoothing before upsampling
+        // Rescale height values
+        float heightScaleFactor = originalDimX / img.dimension(0);
+        Img<RealType> surfaceImg = ImageJFunctions.wrapReal(surfaceImp);
+        Cursor<RealType> surfaceCur = surfaceImg.cursor();
+        while( surfaceCur.hasNext() ) {
+            surfaceCur.fwd();
+            surfaceCur.get().mul(heightScaleFactor);
+        }
 
+        // TODO smoothing before upsampling
+
+        // Upsample image
 		IJ.run(surfaceImp, "Scale...", "x=- y=- width=" + originalDimX + " height=" + originalDimZ + " interpolation=Bicubic average create title=ScaleSurface");
-
         ImagePlus scaledSurfaceImp = WindowManager.getImage("ScaleSurface");
         scaledSurfaceImp.setTitle("ScaleSurfaceFetched");
-
-        //Img<RealType> surfaceImg = ImageJFunctions.wrapReal(scaledSurfaceImp);
 
         return scaledSurfaceImp;
     }
