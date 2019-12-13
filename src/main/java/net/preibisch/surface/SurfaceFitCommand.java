@@ -2,6 +2,7 @@ package net.preibisch.surface;
 
 import ij.IJ;
 import ij.ImagePlus;
+import ij.WindowManager;
 import ij.plugin.FolderOpener;
 import io.scif.services.DatasetIOService;
 import net.imagej.Dataset;
@@ -22,31 +23,33 @@ import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
+import org.scijava.SciJava;
 import org.scijava.command.Command;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import static net.preibisch.surface.Test.*;
 
 @Plugin(type = Command.class)
 public class SurfaceFitCommand implements Command {
-    //@Parameter
+    @Parameter
     private String inputDirectory = "/home/kharrington/Data/SEMA/Z1217_19m/Sec04/flatten/tmp-flattening-level200/resampled/";
 
-    //@Parameter
+    @Parameter
     private String outputDirectory = "/home/kharrington/Data/SEMA/Z1217_19m/Sec04/flatten/tmp-flattening-level200/heightSurf/";
 
-    //private String targetImage = "/home/kharrington/Data/SEMA/Z1217_19m/Sec04/flatten/tmp-flattening-level200/heightSurf/heightSurf200-bot.tif";
-    //private String targetImage = "/home/kharrington/Data/SEMA/Z1217_19m/Sec04/flatten/tmp-flattening-level200/heightSurf/heightSurf200-top.tif";
-    private String targetImage = "/home/kharrington/Data/SEMA/Z1217_19m/Sec04/flatten/tmp-flattening-level200/heightSurf/heightSurf200-bot-downsampleRotLeft.tif";
-
-    //@Parameter
+    @Parameter
     private long originalDimX = 9007;
 
-    //@Parameter
+    @Parameter
     private long originalDimZ = 9599;
+
+    @Parameter
+    private String outputBasename = "heightSurf200";
 
     @Parameter
     private DatasetIOService dataset;
@@ -62,27 +65,28 @@ public class SurfaceFitCommand implements Command {
         // Reslice image
         IJ.run(imp, "Reslice [/]...", "output=1.000 start=Top avoid");
         imp = IJ.getImage();
-        System.out.println("Using as imp: " + imp);
         Img img = ImageJFunctions.wrap(imp);
 
-        img = getBotImg(img);
-        //img = getTopImg(img);
+        ImagePlus botSurfaceMap = getScaledSurfaceMap(getBotImg(img));
+        ImagePlus topSurfaceMap = getScaledSurfaceMap(getTopImg(img));
 
-		final Img<IntType> surface = process2( img, 5, 40, 20 );
+        IJ.save(botSurfaceMap, outputDirectory + outputBasename + "-bot.tif");
+        IJ.save(topSurfaceMap, outputDirectory + outputBasename + "-top.tif");
+    }
 
+    private ImagePlus getScaledSurfaceMap(Img img) {
+        final Img<IntType> surface = process2( img, 5, 40, 20 );
 		final Img< FloatType > rendererSurface = img.factory().create( img );
-
 		renderDepthMap( rendererSurface, surface );
 
 		//Gauss3.gauss( 0.7, Views.extendMirrorSingle( rendererSurface ), rendererSurface );
-
         ImagePlus input = Util.getImagePlusInstance(img);
         input.setTitle("Target");
 		input.show();
 
         ImagePlus surfaceImp = Util.getImagePlusInstance(surface);
         surfaceImp.setTitle("Surface");
-		//surfaceImp.show();
+		surfaceImp.show();
 
         ImagePlus rendererSurfaceImp = Util.getImagePlusInstance(rendererSurface);
         rendererSurfaceImp.setTitle("Generated surface");
@@ -91,8 +95,13 @@ public class SurfaceFitCommand implements Command {
 		IJ.run(input, "Reslice [/]...", "output=1.000 start=Top avoid");
 		IJ.run(rendererSurfaceImp, "Reslice [/]...", "output=1.000 start=Top avoid");
 
+		// TODO smoothing before upsampling
 
-		//IJ.run("Merge Channels...", "c2=[Reslice of Target] c6=[Reslice of Generated] create keep");
+		IJ.run(surfaceImp, "Scale...", "x=- y=- width=" + originalDimX + " height=" + originalDimZ + " interpolation=Bicubic average create title=ScaleSurface");
+
+        ImagePlus scaledSurfaceImp = WindowManager.getImage("ScaleSurface");
+        scaledSurfaceImp.setTitle("ScaleSurfaceFetched");
+        return scaledSurfaceImp;
     }
 
     public Img getBotImg(Img img) {
@@ -126,10 +135,29 @@ public class SurfaceFitCommand implements Command {
         return topImg;
     }
 
-    public static void main(String[] args) {
-        ImageJ imagej = new ImageJ();
-        imagej.ui().showUI();
+//    public static void main(String[] args) {
+//        ImageJ imagej = new ImageJ();
+//        imagej.ui().showUI();
+//
+//        Map<String, Object> argmap = new HashMap<>();
+////        argmap.put("inputDirectory", "/home/kharrington/Data/SEMA/Z1217_19m/Sec04/flatten/tmp-flattening-level200/resampled/");
+////        argmap.put("outputDirectory", "/home/kharrington/Data/SEMA/Z1217_19m/Sec04/flatten/tmp-flattening-level200/heightSurf/");
+////        argmap.put("originalDimX", 9007);
+////        argmap.put("originalDimZ", 9599);
+////        argmap.put("outputBasename", "heightSurf200");
+//
+//        argmap.put("inputDirectory", args[1]);
+//        argmap.put("outputDirectory", args[2]);
+//        argmap.put("originalDimX", args[3]);
+//        argmap.put("originalDimZ", args[4]);
+//        argmap.put("outputBasename", args[5]);
+//
+//        imagej.command().run(SurfaceFitCommand.class, true, argmap);
+//    }
 
-        imagej.command().run(SurfaceFitCommand.class, true);
-    }
+  public static void main(String... args) {
+    SciJava sj = new SciJava();
+    sj.launch(args);
+    sj.context().dispose();
+  }
 }
