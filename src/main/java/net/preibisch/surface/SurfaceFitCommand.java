@@ -25,6 +25,7 @@ import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
 import org.scijava.SciJava;
 import org.scijava.command.Command;
+import org.scijava.io.IOService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 
@@ -52,6 +53,9 @@ public class SurfaceFitCommand implements Command {
     private String outputBasename = "heightSurf200";
 
     @Parameter
+    private IOService io;
+
+    @Parameter
     private DatasetIOService dataset;
 
     @Parameter
@@ -68,10 +72,24 @@ public class SurfaceFitCommand implements Command {
         Img img = ImageJFunctions.wrap(imp);
 
         ImagePlus botSurfaceMap = getScaledSurfaceMap(getBotImg(img));
-        ImagePlus topSurfaceMap = getScaledSurfaceMap(getTopImg(img));
+        Img botSurfaceMapImg = ImageJFunctions.wrap(botSurfaceMap);
+        try {
+            io.save(botSurfaceMapImg, outputDirectory + outputBasename + "-bot.tif");
+            System.out.println("Writing: " + outputDirectory + outputBasename + "-bot.tif");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        //IJ.save(botSurfaceMap, outputDirectory + outputBasename + "-bot.tif");
 
-        IJ.save(botSurfaceMap, outputDirectory + outputBasename + "-bot.tif");
-        IJ.save(topSurfaceMap, outputDirectory + outputBasename + "-top.tif");
+        ImagePlus topSurfaceMap = getScaledSurfaceMap(getTopImg(img));
+        Img topSurfaceMapImg = ImageJFunctions.wrap(topSurfaceMap);
+        try {
+            io.save(topSurfaceMapImg, outputDirectory + outputBasename + "-top.tif");
+            System.out.println("Writing: " + outputDirectory + outputBasename + "-top.tif");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        //IJ.save(topSurfaceMap, outputDirectory + outputBasename + "-top.tif");
     }
 
     private ImagePlus getScaledSurfaceMap(Img img) {
@@ -95,6 +113,7 @@ public class SurfaceFitCommand implements Command {
 		IJ.run(input, "Reslice [/]...", "output=1.000 start=Top avoid");
 		IJ.run(rendererSurfaceImp, "Reslice [/]...", "output=1.000 start=Top avoid");
 
+		// TODO rescale height/Z values
 		// TODO smoothing before upsampling
 
 		IJ.run(surfaceImp, "Scale...", "x=- y=- width=" + originalDimX + " height=" + originalDimZ + " interpolation=Bicubic average create title=ScaleSurface");
@@ -135,29 +154,31 @@ public class SurfaceFitCommand implements Command {
         return topImg;
     }
 
-//    public static void main(String[] args) {
-//        ImageJ imagej = new ImageJ();
-//        imagej.ui().showUI();
-//
-//        Map<String, Object> argmap = new HashMap<>();
-////        argmap.put("inputDirectory", "/home/kharrington/Data/SEMA/Z1217_19m/Sec04/flatten/tmp-flattening-level200/resampled/");
-////        argmap.put("outputDirectory", "/home/kharrington/Data/SEMA/Z1217_19m/Sec04/flatten/tmp-flattening-level200/heightSurf/");
-////        argmap.put("originalDimX", 9007);
-////        argmap.put("originalDimZ", 9599);
-////        argmap.put("outputBasename", "heightSurf200");
-//
+    public static void main(String[] args) {
+        ImageJ imagej = new ImageJ();
+        imagej.ui().showUI();
+
+        Map<String, Object> argmap = new HashMap<>();
+        argmap.put("inputDirectory", "/nrs/flyem/alignment/Z1217-19m/VNC/Sec04/flatten/tmp-flattening-level200/resampled/");
+        //argmap.put("outputDirectory", "/nrs/flyem/alignment/Z1217-19m/VNC/Sec04/flatten/tmp-flattening-level200/heightSurf/");
+        argmap.put("outputDirectory", "/home/kharrington/Data/SEMA/Z1217-19m/VNC/Sec04/flatten/tmp-flattening-level200/heightSurf/");
+        argmap.put("originalDimX", 23254);
+        argmap.put("originalDimZ", 26358);
+        argmap.put("outputBasename", "heightSurf200_v2");
+
 //        argmap.put("inputDirectory", args[1]);
 //        argmap.put("outputDirectory", args[2]);
 //        argmap.put("originalDimX", args[3]);
 //        argmap.put("originalDimZ", args[4]);
 //        argmap.put("outputBasename", args[5]);
-//
-//        imagej.command().run(SurfaceFitCommand.class, true, argmap);
-//    }
 
-  public static void main(String... args) {
-    SciJava sj = new SciJava();
-    sj.launch(args);
-    sj.context().dispose();
-  }
+        imagej.command().run(SurfaceFitCommand.class, true, argmap);
+    }
+
+    // Curtis says this should work for CLI execution, but leads to exceptions
+//    public static void main(String... args) {
+//        SciJava sj = new SciJava();
+//        sj.launch(args);
+//        sj.context().dispose();
+//    }
 }
