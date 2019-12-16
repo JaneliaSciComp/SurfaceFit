@@ -31,6 +31,8 @@ import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 import sc.fiji.hdf5.HDF5ImageJ;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -90,6 +92,7 @@ public class SurfaceFitCommand implements Command {
         // Process bottom
         ImagePlus botSurfaceMap = getScaledSurfaceMap(getBotImg(img));
         RandomAccessibleInterval botSurfaceImg = ImageJFunctions.wrap(botSurfaceMap);
+        RealType botMean = ops.stats().mean(Views.iterable(Views.hyperSlice(botSurfaceImg, 0, 0)));
         try {
             //N5Utils.save(botSurfaceImg, n5, "/BotHeightmap", new int[]{512,512}, new Bzip2Compression());
             N5Utils.save(botSurfaceImg, n5, "/" + outputGroupname + "-bot", n5BlockSize, new RawCompression());
@@ -97,11 +100,20 @@ public class SurfaceFitCommand implements Command {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        HDF5ImageJ.hdf5write(botSurfaceMap, outputDirectory.substring(0,outputDirectory.length()-3) + "h5", "/" + outputGroupname + "-bot");// FIXME hacky
+        HDF5ImageJ.hdf5write(botSurfaceMap, outputDirectory.substring(0,outputDirectory.length()-4) + outputGroupname + "-bot" + ".h5", "/volume");
+
+        try {
+            BufferedWriter bw = new BufferedWriter(new FileWriter(outputDirectory.substring(0,outputDirectory.length()-4) + outputGroupname + "-bot.txt"));
+            bw.write("" + botMean.getRealDouble());
+            bw.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         // Process top
         ImagePlus topSurfaceMap = getScaledSurfaceMap(getTopImg(img));
         RandomAccessibleInterval topSurfaceImg = ImageJFunctions.wrap(topSurfaceMap);
+        RealType topMean = ops.stats().mean(Views.iterable(Views.hyperSlice(topSurfaceImg, 0, 0)));
         try {
             //N5Utils.save(topSurfaceImg, n5, "/TopHeightmap", new int[]{512,512}, new Bzip2Compression());
             N5Utils.save(topSurfaceImg, n5, "/" + outputGroupname + "-top", n5BlockSize, new RawCompression());
@@ -109,7 +121,15 @@ public class SurfaceFitCommand implements Command {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        HDF5ImageJ.hdf5write(topSurfaceMap, outputDirectory.substring(0,outputDirectory.length()-3) + "h5", "/" + outputGroupname + "-top");// FIXME hacky
+        HDF5ImageJ.hdf5write(topSurfaceMap, outputDirectory.substring(0,outputDirectory.length()-4) + outputGroupname + "-top" + ".h5", "/volume");
+
+        try {
+            BufferedWriter bw = new BufferedWriter(new FileWriter(outputDirectory.substring(0,outputDirectory.length()-4) + outputGroupname + "-top.txt"));
+            bw.write("" + topMean.getRealDouble());
+            bw.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private ImagePlus getScaledSurfaceMap(Img img) {
