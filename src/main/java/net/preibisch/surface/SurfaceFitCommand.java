@@ -14,6 +14,10 @@ import net.imglib2.IterableInterval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.interpolation.randomaccess.NearestNeighborInterpolatorFactory;
+import net.imglib2.realtransform.AffineTransform2D;
+import net.imglib2.realtransform.AffineTransform3D;
+import net.imglib2.realtransform.RealViews;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.integer.IntType;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
@@ -29,6 +33,7 @@ import org.scijava.Context;
 import org.scijava.command.Command;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
+import org.scijava.ui.UIService;
 import sc.fiji.hdf5.HDF5ImageJ;
 
 import java.io.BufferedWriter;
@@ -76,9 +81,25 @@ public class SurfaceFitCommand implements Command {
         ImagePlus imp = FolderOpener.open(inputDirectory, " file=tif");
         imp.setTitle("Target");
         // Reslice image
-        IJ.run(imp, "Reslice [/]...", "output=1.000 start=Top avoid");
-        imp = IJ.getImage();
-        Img img = ImageJFunctions.wrap(imp);
+        //IJ.run(imp, "Reslice [/]...", "output=1.000 start=Top avoid");
+        //imp = IJ.getImage();
+
+        // Reslice using imglib
+        Img<RealType> img = ImageJFunctions.wrapReal(imp);
+        RandomAccessibleInterval<RealType> rotView = Views.rotate(img, 1, 1);
+        AffineTransform3D transform = new AffineTransform3D();
+        transform.rotate(0, Math.PI);
+        IterableInterval<RealType> rotatedView = Views.iterable(
+                Views.zeroMin(Views.interval(Views.raster(RealViews.transformReal(Views.interpolate(rotView, new NearestNeighborInterpolatorFactory<>()), transform)),rotView)));
+
+        Img<RealType> resliceImg = img.factory().create(rotatedView);
+        Cursor<RealType> rotCur = rotatedView.cursor();
+        Cursor<RealType> resCur = resliceImg.cursor();
+        while( rotCur.hasNext() ) {
+            rotCur.fwd();
+            resCur.fwd();
+            resCur.get().set(rotCur.get());
+        }
 
         // n5 prep
         N5Writer n5 = null;
@@ -90,7 +111,7 @@ public class SurfaceFitCommand implements Command {
         }
 
         // Process bottom
-        ImagePlus botSurfaceMap = getScaledSurfaceMap(getBotImg(img));
+        ImagePlus botSurfaceMap = getScaledSurfaceMap(getBotImg(resliceImg));
         RandomAccessibleInterval botSurfaceImg = ImageJFunctions.wrap(botSurfaceMap);
         RealType botMean = ops.stats().mean(Views.iterable(Views.hyperSlice(botSurfaceImg, 0, 0)));
         try {
@@ -111,7 +132,7 @@ public class SurfaceFitCommand implements Command {
         }
 
         // Process top
-        ImagePlus topSurfaceMap = getScaledSurfaceMap(getTopImg(img));
+        ImagePlus topSurfaceMap = getScaledSurfaceMap(getTopImg(resliceImg));
         RandomAccessibleInterval topSurfaceImg = ImageJFunctions.wrap(topSurfaceMap);
         RealType topMean = ops.stats().mean(Views.iterable(Views.hyperSlice(topSurfaceImg, 0, 0)));
         try {
