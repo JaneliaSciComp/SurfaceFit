@@ -86,9 +86,14 @@ public class SurfaceFitCommand implements Command {
 
     @Override
     public void run() {
+        System.out.println("SurfaceFitCommand");
+        System.out.println("Input directory: " + inputDirectory);
+        System.out.println("Output directory: " + outputDirectory);
+        System.out.println("Output groupname: " + outputGroupname);
+
         // Open image sequence from input directory
         ImagePlus imp = FolderOpener.open(inputDirectory, " file=tif");
-        imp.setTitle("Target");
+        //imp.setTitle("Target");
         // Reslice image
         //IJ.run(imp, "Reslice [/]...", "output=1.000 start=Top avoid");
         //imp = IJ.getImage();
