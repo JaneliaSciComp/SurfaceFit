@@ -76,6 +76,9 @@ public class SurfaceFitCommand implements Command {
     @Parameter
     private Context context;
 
+    @Parameter(required = false)
+    private boolean terminateOnCompletion = false;
+
 //    @Parameter
 //    private UIService ui;
 
@@ -152,6 +155,9 @@ public class SurfaceFitCommand implements Command {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        if( terminateOnCompletion )
+            System.exit(0);
     }
 
     private RandomAccessibleInterval<UnsignedShortType> getScaledSurfaceMap(Img img) {
