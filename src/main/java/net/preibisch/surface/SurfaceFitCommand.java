@@ -118,11 +118,11 @@ public class SurfaceFitCommand implements Command {
         try {
             //N5Utils.save(botSurfaceImg, n5, "/BotHeightmap", new int[]{512,512}, new Bzip2Compression());
             N5Utils.save(botSurfaceImg, n5, "/" + outputGroupname + "-bot", n5BlockSize, new RawCompression());
-            System.out.println("Done writing bot");
         } catch (IOException e) {
             e.printStackTrace();
         }
         HDF5ImageJ.hdf5write(ImageJFunctions.wrap(botSurfaceImg, "BotSurfaceMap"), outputDirectory.substring(0,outputDirectory.length()-4) + outputGroupname + "-bot" + ".h5", "/volume");
+        System.out.println("Done writing bot");
 
         try {
             BufferedWriter bw = new BufferedWriter(new FileWriter(outputDirectory.substring(0,outputDirectory.length()-4) + outputGroupname + "-bot.txt"));
@@ -139,11 +139,11 @@ public class SurfaceFitCommand implements Command {
         try {
             //N5Utils.save(topSurfaceImg, n5, "/TopHeightmap", new int[]{512,512}, new Bzip2Compression());
             N5Utils.save(topSurfaceImg, n5, "/" + outputGroupname + "-top", n5BlockSize, new RawCompression());
-            System.out.println("Done writing top");
         } catch (IOException e) {
             e.printStackTrace();
         }
         HDF5ImageJ.hdf5write(ImageJFunctions.wrap(topSurfaceImg, "TopSurfaceMap"), outputDirectory.substring(0,outputDirectory.length()-4) + outputGroupname + "-top" + ".h5", "/volume");
+        System.out.println("Done writing top");
 
         try {
             BufferedWriter bw = new BufferedWriter(new FileWriter(outputDirectory.substring(0,outputDirectory.length()-4) + outputGroupname + "-top.txt"));
@@ -155,7 +155,7 @@ public class SurfaceFitCommand implements Command {
     }
 
     private RandomAccessibleInterval<UnsignedShortType> getScaledSurfaceMap(Img img) {
-        final Img<IntType> surface = process2( img, 5, 40, 20 );
+        final Img<IntType> surfaceImg = process2( img, 5, 40, 20 );
 
 
 //		final Img< FloatType > rendererSurface = img.factory().create( img );
@@ -166,8 +166,8 @@ public class SurfaceFitCommand implements Command {
 //        input.setTitle("Target");
 //		//input.show();
 
-        ImagePlus surfaceImp = Util.getImagePlusInstance(surface);
-        surfaceImp.setTitle("Surface");
+//        ImagePlus surfaceImp = Util.getImagePlusInstance(surface);
+//        surfaceImp.setTitle("Surface");
 		//surfaceImp.show();
 
 //        ImagePlus rendererSurfaceImp = Util.getImagePlusInstance(rendererSurface);
@@ -180,8 +180,8 @@ public class SurfaceFitCommand implements Command {
 
         // Rescale height values
         float heightScaleFactor = originalDimX / img.dimension(0);
-        Img<RealType> surfaceImg = ImageJFunctions.wrapReal(surfaceImp);
-        Cursor<RealType> surfaceCur = surfaceImg.cursor();
+        //Img<RealType> surfaceImg = ImageJFunctions.wrapReal(surfaceImp);
+        Cursor<IntType> surfaceCur = surfaceImg.cursor();
         while( surfaceCur.hasNext() ) {
             surfaceCur.fwd();
             surfaceCur.get().mul(heightScaleFactor);
