@@ -8,21 +8,24 @@ import io.scif.SCIFIOService;
 import io.scif.services.DatasetIOService;
 import net.imagej.ImageJ;
 import net.imagej.ops.OpService;
-import net.imglib2.Cursor;
-import net.imglib2.FinalInterval;
-import net.imglib2.IterableInterval;
-import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.*;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.interpolation.randomaccess.LanczosInterpolator;
+import net.imglib2.interpolation.randomaccess.NLinearInterpolator;
+import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.interpolation.randomaccess.NearestNeighborInterpolatorFactory;
 import net.imglib2.realtransform.AffineTransform2D;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.realtransform.RealViews;
+import net.imglib2.realtransform.Scale;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.integer.IntType;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
+import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Intervals;
+import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
 import org.janelia.saalfeldlab.n5.Bzip2Compression;
 import org.janelia.saalfeldlab.n5.N5FSWriter;
@@ -73,8 +76,8 @@ public class SurfaceFitCommand implements Command {
     @Parameter
     private Context context;
 
-    @Parameter
-    private UIService ui;
+//    @Parameter
+//    private UIService ui;
 
     private int[] n5BlockSize = new int[]{512,512};
 
@@ -90,7 +93,6 @@ public class SurfaceFitCommand implements Command {
         // Reslice using imglib
         Img<RealType> img = ImageJFunctions.wrapReal(imp);
         RandomAccessibleInterval<RealType> rotView = Views.invertAxis(Views.rotate(img, 1, 2),1);
-
         Img<RealType> resliceImg = img.factory().create(rotView);
         Cursor<RealType> rotCur = Views.iterable(rotView).cursor();
         Cursor<RealType> resCur = resliceImg.cursor();
@@ -110,8 +112,8 @@ public class SurfaceFitCommand implements Command {
         }
 
         // Process bottom
-        ImagePlus botSurfaceMap = getScaledSurfaceMap(getBotImg(resliceImg));
-        RandomAccessibleInterval botSurfaceImg = ImageJFunctions.wrap(botSurfaceMap);
+        RandomAccessibleInterval botSurfaceImg = getScaledSurfaceMap(getBotImg(resliceImg));
+
         RealType botMean = ops.stats().mean(Views.iterable(Views.hyperSlice(botSurfaceImg, 0, 0)));
         try {
             //N5Utils.save(botSurfaceImg, n5, "/BotHeightmap", new int[]{512,512}, new Bzip2Compression());
@@ -120,7 +122,7 @@ public class SurfaceFitCommand implements Command {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        HDF5ImageJ.hdf5write(botSurfaceMap, outputDirectory.substring(0,outputDirectory.length()-4) + outputGroupname + "-bot" + ".h5", "/volume");
+        HDF5ImageJ.hdf5write(ImageJFunctions.wrap(botSurfaceImg, "BotSurfaceMap"), outputDirectory.substring(0,outputDirectory.length()-4) + outputGroupname + "-bot" + ".h5", "/volume");
 
         try {
             BufferedWriter bw = new BufferedWriter(new FileWriter(outputDirectory.substring(0,outputDirectory.length()-4) + outputGroupname + "-bot.txt"));
@@ -131,8 +133,8 @@ public class SurfaceFitCommand implements Command {
         }
 
         // Process top
-        ImagePlus topSurfaceMap = getScaledSurfaceMap(getTopImg(resliceImg));
-        RandomAccessibleInterval topSurfaceImg = ImageJFunctions.wrap(topSurfaceMap);
+        RandomAccessibleInterval topSurfaceImg = getScaledSurfaceMap(getTopImg(resliceImg));
+
         RealType topMean = ops.stats().mean(Views.iterable(Views.hyperSlice(topSurfaceImg, 0, 0)));
         try {
             //N5Utils.save(topSurfaceImg, n5, "/TopHeightmap", new int[]{512,512}, new Bzip2Compression());
@@ -141,7 +143,7 @@ public class SurfaceFitCommand implements Command {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        HDF5ImageJ.hdf5write(topSurfaceMap, outputDirectory.substring(0,outputDirectory.length()-4) + outputGroupname + "-top" + ".h5", "/volume");
+        HDF5ImageJ.hdf5write(ImageJFunctions.wrap(topSurfaceImg, "TopSurfaceMap"), outputDirectory.substring(0,outputDirectory.length()-4) + outputGroupname + "-top" + ".h5", "/volume");
 
         try {
             BufferedWriter bw = new BufferedWriter(new FileWriter(outputDirectory.substring(0,outputDirectory.length()-4) + outputGroupname + "-top.txt"));
@@ -152,7 +154,7 @@ public class SurfaceFitCommand implements Command {
         }
     }
 
-    private ImagePlus getScaledSurfaceMap(Img img) {
+    private RandomAccessibleInterval<UnsignedShortType> getScaledSurfaceMap(Img img) {
         final Img<IntType> surface = process2( img, 5, 40, 20 );
 
 
@@ -188,15 +190,32 @@ public class SurfaceFitCommand implements Command {
         // Smooth image
 
         //surfaceImp.close();
-        RandomAccessibleInterval<RealType> res = ops.filter().gauss(surfaceImg, 2);// this parameter differs from Dagmar's
-        surfaceImp = ImageJFunctions.wrap(res, "Surface");
+        RandomAccessibleInterval<UnsignedShortType> res = ops.filter().gauss(surfaceImg, 2);// this parameter differs from Dagmar's
 
-        // Upsample image
-		IJ.run(surfaceImp, "Scale...", "x=- y=- width=" + originalDimX + " height=" + originalDimZ + " interpolation=Bicubic average create title=ScaleSurface");
-        ImagePlus scaledSurfaceImp = WindowManager.getImage("ScaleSurface");
-        scaledSurfaceImp.setTitle("ScaleSurfaceFetched");
+        long[] newDims = new long[]{originalDimX, originalDimZ};
 
-        return scaledSurfaceImp;
+        NLinearInterpolatorFactory<UnsignedShortType> interpolatorFactory = new NLinearInterpolatorFactory<>();
+
+        double[] scaleFactors = new double[]{originalDimX / res.dimension(0), originalDimZ / res.dimension(1)};
+
+        RealRandomAccessible<UnsignedShortType> interp = Views.interpolate(Views.extendMirrorSingle(res), interpolatorFactory);
+
+        IntervalView<UnsignedShortType> interval = Views.interval(Views.raster(RealViews.affineReal(
+			interp,
+			new Scale(scaleFactors))), new FinalInterval(newDims));
+
+//        surfaceImp = ImageJFunctions.wrap(res, "Surface");
+//
+//        // Upsample image
+//		IJ.run(surfaceImp, "Scale...", "x=- y=- width=" + originalDimX + " height=" + originalDimZ + " interpolation=Bicubic average create title=ScaleSurface");
+//        ImagePlus scaledSurfaceImp = WindowManager.getImage("ScaleSurface");
+//        scaledSurfaceImp.setTitle("ScaleSurfaceFetched");
+
+        return interval;
+//
+//        ImagePlus scaledSurfaceImp = ImageJFunctions.wrap(interval, "Surface");
+//
+//        return scaledSurfaceImp;
     }
 
     public Img getBotImg(Img img) {
