@@ -53,7 +53,7 @@ public class SurfaceFitCommand implements Command {
     private String inputDirectory = "/home/kharrington/Data/SEMA/Z1217_19m/Sec04/flatten/tmp-flattening-level200/resampled/";
 
     @Parameter
-    private String outputDirectory = "/home/kharrington/Data/SEMA/Z1217_19m/Sec04/heightSurfaces.n5/";
+    private String outputDirectory = "/home/kharrington/Data/SEMA/Z1217_19m/Sec04/heightSurf/";
 
     @Parameter
     private long originalDimX = 9007;
@@ -118,17 +118,17 @@ public class SurfaceFitCommand implements Command {
         RandomAccessibleInterval botSurfaceImg = getScaledSurfaceMap(getBotImg(resliceImg));
 
         RealType botMean = ops.stats().mean(Views.iterable(Views.hyperSlice(botSurfaceImg, 0, 0)));
-        try {
-            //N5Utils.save(botSurfaceImg, n5, "/BotHeightmap", new int[]{512,512}, new Bzip2Compression());
-            N5Utils.save(botSurfaceImg, n5, "/" + outputGroupname + "-bot", n5BlockSize, new RawCompression());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        HDF5ImageJ.hdf5write(ImageJFunctions.wrap(botSurfaceImg, "BotSurfaceMap"), outputDirectory.substring(0,outputDirectory.length()-4) + outputGroupname + "-bot" + ".h5", "/volume");
+//        try {
+//            //N5Utils.save(botSurfaceImg, n5, "/BotHeightmap", new int[]{512,512}, new Bzip2Compression());
+//            N5Utils.save(botSurfaceImg, n5, "/" + outputGroupname + "-bot", n5BlockSize, new RawCompression());
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+        HDF5ImageJ.hdf5write(ImageJFunctions.wrap(botSurfaceImg, "BotSurfaceMap"), outputDirectory + outputGroupname + "-bot" + ".h5", "/volume");
         System.out.println("Done writing bot");
 
         try {
-            BufferedWriter bw = new BufferedWriter(new FileWriter(outputDirectory.substring(0,outputDirectory.length()-4) + outputGroupname + "-bot.txt"));
+            BufferedWriter bw = new BufferedWriter(new FileWriter(outputDirectory + outputGroupname + "-bot.txt"));
             bw.write("" + botMean.getRealDouble());
             bw.close();
         } catch (IOException e) {
@@ -139,17 +139,17 @@ public class SurfaceFitCommand implements Command {
         RandomAccessibleInterval topSurfaceImg = getScaledSurfaceMap(getTopImg(resliceImg));
 
         RealType topMean = ops.stats().mean(Views.iterable(Views.hyperSlice(topSurfaceImg, 0, 0)));
-        try {
-            //N5Utils.save(topSurfaceImg, n5, "/TopHeightmap", new int[]{512,512}, new Bzip2Compression());
-            N5Utils.save(topSurfaceImg, n5, "/" + outputGroupname + "-top", n5BlockSize, new RawCompression());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        HDF5ImageJ.hdf5write(ImageJFunctions.wrap(topSurfaceImg, "TopSurfaceMap"), outputDirectory.substring(0,outputDirectory.length()-4) + outputGroupname + "-top" + ".h5", "/volume");
+//        try {
+//            //N5Utils.save(topSurfaceImg, n5, "/TopHeightmap", new int[]{512,512}, new Bzip2Compression());
+//            N5Utils.save(topSurfaceImg, n5, "/" + outputGroupname + "-top", n5BlockSize, new RawCompression());
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+        HDF5ImageJ.hdf5write(ImageJFunctions.wrap(topSurfaceImg, "TopSurfaceMap"), outputDirectory + outputGroupname + "-top" + ".h5", "/volume");
         System.out.println("Done writing top");
 
         try {
-            BufferedWriter bw = new BufferedWriter(new FileWriter(outputDirectory.substring(0,outputDirectory.length()-4) + outputGroupname + "-top.txt"));
+            BufferedWriter bw = new BufferedWriter(new FileWriter(outputDirectory + outputGroupname + "-top.txt"));
             bw.write("" + topMean.getRealDouble());
             bw.close();
         } catch (IOException e) {
@@ -262,7 +262,7 @@ public class SurfaceFitCommand implements Command {
         Map<String, Object> argmap = new HashMap<>();
         argmap.put("inputDirectory", "/nrs/flyem/alignment/Z1217-19m/VNC/Sec04/flatten/tmp-flattening-level200/resampled/");
         //argmap.put("outputDirectory", "/nrs/flyem/alignment/Z1217-19m/VNC/Sec04/flatten/tmp-flattening-level200/heightSurf/");
-        argmap.put("outputDirectory", "/home/kharrington/Data/SEMA/Z1217-19m/VNC/Sec04/heightSurfaces.n5/");
+        argmap.put("outputDirectory", "/home/kharrington/Data/SEMA/Z1217-19m/VNC/Sec04/heightSurf/");
         argmap.put("originalDimX", 23254);
         argmap.put("originalDimZ", 26358);
         argmap.put("outputGroupname", "level200");
