@@ -73,6 +73,9 @@ public class SurfaceFitCommand implements Command {
     @Parameter
     private Context context;
 
+    @Parameter
+    private UIService ui;
+
     private int[] n5BlockSize = new int[]{512,512};
 
     @Override
@@ -86,14 +89,10 @@ public class SurfaceFitCommand implements Command {
 
         // Reslice using imglib
         Img<RealType> img = ImageJFunctions.wrapReal(imp);
-        RandomAccessibleInterval<RealType> rotView = Views.rotate(img, 1, 1);
-        AffineTransform3D transform = new AffineTransform3D();
-        transform.rotate(0, Math.PI);
-        IterableInterval<RealType> rotatedView = Views.iterable(
-                Views.zeroMin(Views.interval(Views.raster(RealViews.transformReal(Views.interpolate(rotView, new NearestNeighborInterpolatorFactory<>()), transform)),rotView)));
+        RandomAccessibleInterval<RealType> rotView = Views.invertAxis(Views.rotate(img, 1, 2),1);
 
-        Img<RealType> resliceImg = img.factory().create(rotatedView);
-        Cursor<RealType> rotCur = rotatedView.cursor();
+        Img<RealType> resliceImg = img.factory().create(rotView);
+        Cursor<RealType> rotCur = Views.iterable(rotView).cursor();
         Cursor<RealType> resCur = resliceImg.cursor();
         while( rotCur.hasNext() ) {
             rotCur.fwd();
