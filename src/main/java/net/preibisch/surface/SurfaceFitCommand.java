@@ -120,7 +120,7 @@ public class SurfaceFitCommand implements Command {
         }
 
         // Process bottom
-        RandomAccessibleInterval botSurfaceImg = getScaledSurfaceMap(getBotImg(resliceImg));
+        RandomAccessibleInterval botSurfaceImg = getScaledSurfaceMap(getBotImg(resliceImg), 0);
 
         RealType botMean = ops.stats().mean(Views.iterable(Views.hyperSlice(botSurfaceImg, 0, 0)));
 //        try {
@@ -140,8 +140,9 @@ public class SurfaceFitCommand implements Command {
             e.printStackTrace();
         }
 
+
         // Process top
-        RandomAccessibleInterval topSurfaceImg = getScaledSurfaceMap(getTopImg(resliceImg));
+        RandomAccessibleInterval topSurfaceImg = getScaledSurfaceMap(getTopImg(resliceImg), resliceImg.dimension(2)/2);
 
         RealType topMean = ops.stats().mean(Views.iterable(Views.hyperSlice(topSurfaceImg, 0, 0)));
 //        try {
@@ -165,7 +166,13 @@ public class SurfaceFitCommand implements Command {
             System.exit(0);
     }
 
-    private RandomAccessibleInterval<UnsignedShortType> getScaledSurfaceMap(Img img) {
+    /**
+     *
+     * @param img
+     * @param offset - this accounts for the fact that processing the "top" is run in an interval offset
+     * @return
+     */
+    private RandomAccessibleInterval<UnsignedShortType> getScaledSurfaceMap(Img img, long offset) {
         final Img<IntType> surfaceImg = process2( img, 5, 40, 20 );
 
 
@@ -195,6 +202,7 @@ public class SurfaceFitCommand implements Command {
         Cursor<IntType> surfaceCur = surfaceImg.cursor();
         while( surfaceCur.hasNext() ) {
             surfaceCur.fwd();
+            surfaceCur.get().add(new IntType((int) offset));// FIXME beware of this casting
             surfaceCur.get().mul(heightScaleFactor);
         }
 
