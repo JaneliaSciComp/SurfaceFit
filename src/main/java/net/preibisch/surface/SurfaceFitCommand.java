@@ -197,12 +197,12 @@ public class SurfaceFitCommand implements Command {
 //		IJ.run(rendererSurfaceImp, "Reslice [/]...", "output=1.000 start=Top avoid");
 
         // Rescale height values
-        float heightScaleFactor = originalDimX / img.dimension(0);
+        float heightScaleFactor = originalDimX / img.dimension(0) / 2;
         //Img<RealType> surfaceImg = ImageJFunctions.wrapReal(surfaceImp);
         Cursor<IntType> surfaceCur = surfaceImg.cursor();
         while( surfaceCur.hasNext() ) {
             surfaceCur.fwd();
-            surfaceCur.get().add(new IntType((int) offset));// FIXME beware of this casting
+            //surfaceCur.get().add(new IntType((int) offset));// FIXME beware of this casting
             surfaceCur.get().mul(heightScaleFactor);
         }
 
