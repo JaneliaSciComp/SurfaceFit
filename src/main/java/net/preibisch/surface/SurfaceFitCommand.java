@@ -188,7 +188,7 @@ public class SurfaceFitCommand implements Command {
         long count = 0;
         while( surfaceCur.hasNext() ) {
             surfaceCur.fwd();
-            //surfaceCur.get().add(new IntType((int) offset));// FIXME beware of this casting
+            surfaceCur.get().add(new IntType((int) offset));
             surfaceCur.get().mul(heightScaleFactor);
             tmp.setReal(surfaceCur.get().getRealDouble());
             avg.add(tmp);
