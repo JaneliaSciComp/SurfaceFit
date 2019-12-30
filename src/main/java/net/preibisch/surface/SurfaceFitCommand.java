@@ -23,8 +23,10 @@ import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.integer.IntType;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.integer.UnsignedShortType;
+import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Intervals;
+import net.imglib2.util.Pair;
 import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
 import org.janelia.saalfeldlab.n5.Bzip2Compression;
@@ -164,6 +166,67 @@ public class SurfaceFitCommand implements Command {
 
         if( terminateOnCompletion )
             System.exit(0);
+    }
+
+        /**
+     *
+     * @param img
+     * @param offset - this accounts for the fact that processing the "top" is run in an interval offset
+     * @return
+     */
+    public static Pair<RandomAccessibleInterval<IntType>, DoubleType> getScaledSurfaceMapAndAverage(Img img, long offset, long originalDimX, long originalDimZ, OpService ops) {
+        final Img<IntType> surfaceImg = process2( img, 5, 40, 20 );
+
+        // Rescale height values
+        float heightScaleFactor = originalDimX / img.dimension(0) / 2;
+        //Img<RealType> surfaceImg = ImageJFunctions.wrapReal(surfaceImp);
+        Cursor<IntType> surfaceCur = surfaceImg.cursor();
+
+        DoubleType avg = new DoubleType(0);
+        DoubleType tmp = new DoubleType();
+
+        long count = 0;
+        while( surfaceCur.hasNext() ) {
+            surfaceCur.fwd();
+            //surfaceCur.get().add(new IntType((int) offset));// FIXME beware of this casting
+            surfaceCur.get().mul(heightScaleFactor);
+            tmp.setReal(surfaceCur.get().getRealDouble());
+            avg.add(tmp);
+            count++;
+        }
+        avg.div(new DoubleType(count));
+
+        RandomAccessibleInterval<IntType> res = ops.filter().gauss(surfaceImg, 2);// this parameter differs from Dagmar's
+
+        long[] newDims = new long[]{originalDimX, originalDimZ};
+
+        NLinearInterpolatorFactory<IntType> interpolatorFactory = new NLinearInterpolatorFactory<>();
+
+        double[] scaleFactors = new double[]{originalDimX / res.dimension(0), originalDimZ / res.dimension(1)};
+
+        RealRandomAccessible<IntType> interp = Views.interpolate(Views.extendMirrorSingle(res), interpolatorFactory);
+
+        IntervalView<IntType> interval = Views.interval(Views.raster(RealViews.affineReal(
+			interp,
+			new Scale(scaleFactors))), new FinalInterval(newDims));
+
+
+        Pair<RandomAccessibleInterval<IntType>, DoubleType> pair = new Pair<RandomAccessibleInterval<IntType>, DoubleType>() {
+            @Override
+            public RandomAccessibleInterval<IntType> getA() {
+                return interval;
+            }
+
+            @Override
+            public DoubleType getB() {
+                return avg;
+            }
+        };
+        return pair;
+//
+//        ImagePlus scaledSurfaceImp = ImageJFunctions.wrap(interval, "Surface");
+//
+//        return scaledSurfaceImp;
     }
 
     /**
