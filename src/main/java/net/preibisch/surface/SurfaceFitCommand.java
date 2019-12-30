@@ -120,7 +120,7 @@ public class SurfaceFitCommand implements Command {
         }
 
         // Process bottom
-        RandomAccessibleInterval botSurfaceImg = getScaledSurfaceMap(getBotImg(resliceImg), 0);
+        RandomAccessibleInterval botSurfaceImg = getScaledSurfaceMap(getBotImg(resliceImg, ops), 0, originalDimX, originalDimZ, ops);
 
         RealType botMean = ops.stats().mean(Views.iterable(Views.hyperSlice(botSurfaceImg, 0, 0)));
 //        try {
@@ -142,7 +142,7 @@ public class SurfaceFitCommand implements Command {
 
 
         // Process top
-        RandomAccessibleInterval topSurfaceImg = getScaledSurfaceMap(getTopImg(resliceImg), resliceImg.dimension(2)/2);
+        RandomAccessibleInterval topSurfaceImg = getScaledSurfaceMap(getTopImg(resliceImg, ops), resliceImg.dimension(2)/2, originalDimX, originalDimZ, ops);
 
         RealType topMean = ops.stats().mean(Views.iterable(Views.hyperSlice(topSurfaceImg, 0, 0)));
 //        try {
@@ -172,7 +172,7 @@ public class SurfaceFitCommand implements Command {
      * @param offset - this accounts for the fact that processing the "top" is run in an interval offset
      * @return
      */
-    private RandomAccessibleInterval<UnsignedShortType> getScaledSurfaceMap(Img img, long offset) {
+    public static RandomAccessibleInterval<IntType> getScaledSurfaceMap(Img img, long offset, long originalDimX, long originalDimZ, OpService ops) {
         final Img<IntType> surfaceImg = process2( img, 5, 40, 20 );
 
 
@@ -209,17 +209,17 @@ public class SurfaceFitCommand implements Command {
         // Smooth image
 
         //surfaceImp.close();
-        RandomAccessibleInterval<UnsignedShortType> res = ops.filter().gauss(surfaceImg, 2);// this parameter differs from Dagmar's
+        RandomAccessibleInterval<IntType> res = ops.filter().gauss(surfaceImg, 2);// this parameter differs from Dagmar's
 
         long[] newDims = new long[]{originalDimX, originalDimZ};
 
-        NLinearInterpolatorFactory<UnsignedShortType> interpolatorFactory = new NLinearInterpolatorFactory<>();
+        NLinearInterpolatorFactory<IntType> interpolatorFactory = new NLinearInterpolatorFactory<>();
 
         double[] scaleFactors = new double[]{originalDimX / res.dimension(0), originalDimZ / res.dimension(1)};
 
-        RealRandomAccessible<UnsignedShortType> interp = Views.interpolate(Views.extendMirrorSingle(res), interpolatorFactory);
+        RealRandomAccessible<IntType> interp = Views.interpolate(Views.extendMirrorSingle(res), interpolatorFactory);
 
-        IntervalView<UnsignedShortType> interval = Views.interval(Views.raster(RealViews.affineReal(
+        IntervalView<IntType> interval = Views.interval(Views.raster(RealViews.affineReal(
 			interp,
 			new Scale(scaleFactors))), new FinalInterval(newDims));
 
@@ -237,7 +237,7 @@ public class SurfaceFitCommand implements Command {
 //        return scaledSurfaceImp;
     }
 
-    public Img getBotImg(Img img) {
+    public static Img getBotImg(Img img, OpService ops) {
         FinalInterval botHalfInterval = Intervals.createMinMax(0, 0, 0, img.dimension(0)-1, img.dimension(1)-1, img.dimension(2)/2-1);
         Img<FloatType> botImg = ops.create().img(botHalfInterval, new FloatType());
 
@@ -252,7 +252,7 @@ public class SurfaceFitCommand implements Command {
         return botImg;
     }
 
-    public Img getTopImg(Img img) {
+    public static Img getTopImg(Img img, OpService ops) {
         FinalInterval topHalfInterval = Intervals.createMinMax(0, 0, img.dimension(2)/2, img.dimension(0)-1, img.dimension(1)-1, img.dimension(2)-1);
         FinalInterval topIntervalSize = Intervals.createMinMax(0, 0, 0, topHalfInterval.dimension(0)-1, topHalfInterval.dimension(1)-1, topHalfInterval.dimension(2)-1);
         Img<FloatType> topImg = ops.create().img(topIntervalSize, new FloatType());
