@@ -300,7 +300,7 @@ public class SurfaceFitCommand implements Command {
 //        return scaledSurfaceImp;
     }
 
-    public static Img getBotImg(Img img, OpService ops) {
+    public static Img getBotImg(RandomAccessibleInterval img, OpService ops) {
         FinalInterval botHalfInterval = Intervals.createMinMax(0, 0, 0, img.dimension(0)-1, img.dimension(1)-1, img.dimension(2)/2-1);
         Img<FloatType> botImg = ops.create().img(botHalfInterval, new FloatType());
 
@@ -315,7 +315,7 @@ public class SurfaceFitCommand implements Command {
         return botImg;
     }
 
-    public static Img getTopImg(Img img, OpService ops) {
+    public static Img getTopImg(RandomAccessibleInterval img, OpService ops) {
         FinalInterval topHalfInterval = Intervals.createMinMax(0, 0, img.dimension(2)/2, img.dimension(0)-1, img.dimension(1)-1, img.dimension(2)-1);
         FinalInterval topIntervalSize = Intervals.createMinMax(0, 0, 0, topHalfInterval.dimension(0)-1, topHalfInterval.dimension(1)-1, topHalfInterval.dimension(2)-1);
         Img<FloatType> topImg = ops.create().img(topIntervalSize, new FloatType());

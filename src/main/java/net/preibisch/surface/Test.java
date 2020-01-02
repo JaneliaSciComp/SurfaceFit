@@ -105,24 +105,24 @@ public class Test
 		//ZSurface_detector.Add_NoCrossing_Constraint_Between_Surfaces(1, 2, min_dist, max_dist);
 		
 		end = System.currentTimeMillis();
-		IJ.log("...done inserting edges. (" + (end - start) + "ms)");
+		//IJ.log("...done inserting edges. (" + (end - start) + "ms)");
 		
 		
 		///////////////////////////////////////////////////////////////////////////////////////////////////
 		// computing the maximum flow //////////////////////////////////////////////////////////////////////
-		IJ.log("Calculating max flow");
+		//IJ.log("Calculating max flow");
 		start = System.currentTimeMillis();
 		
 		ZSurface_detector.Process();
 		float maxFlow = ZSurface_detector.getMaxFlow();
 		
 		end = System.currentTimeMillis();
-		IJ.log("...done. Max flow is " + maxFlow + ". (" + (end - start) + "ms)");
+		//IJ.log("...done. Max flow is " + maxFlow + ". (" + (end - start) + "ms)");
 		
 		
 		/////////////////////////////////////////////////////////////////////////////////////////////
 		// building the depth map, upsample the result 	and display it //////////////////////////////
-		IJ.log("n surfaces: " + ZSurface_detector.getNSurfaces() );
+		//IJ.log("n surfaces: " + ZSurface_detector.getNSurfaces() );
 		Img<IntType> depth_map1 =  ZSurface_detector.get_Altitude_MapInt(1);
 		//Img<FloatType> depth_map2 =  ZSurface_detector.get_Altitude_Map(2);
 
@@ -139,7 +139,7 @@ public class Test
 			ImageJFunctions.show(excerpt2, "excerpt");
 		}
 		*/
-		IJ.log("processing done");
+		//IJ.log("processing done");
 		
 		return depth_map1;
 	}
