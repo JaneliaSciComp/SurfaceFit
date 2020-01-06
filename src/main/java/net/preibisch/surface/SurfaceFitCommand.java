@@ -9,6 +9,7 @@ import io.scif.services.DatasetIOService;
 import net.imagej.ImageJ;
 import net.imagej.ops.OpService;
 import net.imglib2.*;
+import net.imglib2.converter.Converters;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.interpolation.randomaccess.LanczosInterpolator;
@@ -78,7 +79,7 @@ public class SurfaceFitCommand implements Command {
     @Parameter
     private Context context;
 
-    @Parameter(required = false)
+    //@Parameter(required = false)
     private boolean terminateOnCompletion = false;
 
 //    @Parameter
@@ -101,68 +102,66 @@ public class SurfaceFitCommand implements Command {
         //imp = IJ.getImage();
 
         // Reslice using imglib
-        Img<RealType> img = ImageJFunctions.wrapReal(imp);
-        RandomAccessibleInterval<RealType> rotView = Views.invertAxis(Views.rotate(img, 1, 2),1);
-        Img<RealType> resliceImg = img.factory().create(rotView);
-        Cursor<RealType> rotCur = Views.iterable(rotView).cursor();
-        Cursor<RealType> resCur = resliceImg.cursor();
-        while( rotCur.hasNext() ) {
-            rotCur.fwd();
-            resCur.fwd();
-            resCur.get().set(rotCur.get());
-        }
+        Img<UnsignedByteType> img = ImageJFunctions.wrapReal(imp);
+
+
+        RandomAccessibleInterval<UnsignedByteType> rotView = Views.invertAxis(Views.rotate(img, 1, 2),1);
+
+        final RandomAccessibleInterval<DoubleType> resliceRai = Converters.convert(rotView, (a, d) -> d.setReal(a.getRealDouble()), new DoubleType());
 
         // n5 prep
-        N5Writer n5 = null;
-        try {
-            n5 = new N5FSWriter(outputDirectory);
-            System.out.println("N5 location: " + outputDirectory);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+//        N5Writer n5 = null;
+//        try {
+//            n5 = new N5FSWriter(outputDirectory);
+//            System.out.println("N5 location: " + outputDirectory);
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
 
         // Process bottom
-        RandomAccessibleInterval botSurfaceImg = getScaledSurfaceMap(getBotImg(resliceImg, ops), 0, originalDimX, originalDimZ, ops);
+        RandomAccessibleInterval botSurfaceImg = getScaledSurfaceMap(getBotImg(resliceRai, ops), 0, originalDimX, originalDimZ, ops);
 
-        RealType botMean = ops.stats().mean(Views.iterable(Views.hyperSlice(botSurfaceImg, 0, 0)));
 //        try {
 //            //N5Utils.save(botSurfaceImg, n5, "/BotHeightmap", new int[]{512,512}, new Bzip2Compression());
 //            N5Utils.save(botSurfaceImg, n5, "/" + outputGroupname + "-bot", n5BlockSize, new RawCompression());
 //        } catch (IOException e) {
 //            e.printStackTrace();
 //        }
-        HDF5ImageJ.hdf5write(ImageJFunctions.wrap(botSurfaceImg, "BotSurfaceMap"), outputDirectory + outputGroupname + "-bot" + ".h5", "/volume");
-        System.out.println("Done writing bot");
 
-        try {
-            BufferedWriter bw = new BufferedWriter(new FileWriter(outputDirectory + outputGroupname + "-bot.txt"));
-            bw.write("" + botMean.getRealDouble());
-            bw.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        // Old code for mimicing existing pipeline
+//        RealType botMean = ops.stats().mean(Views.iterable(Views.hyperSlice(botSurfaceImg, 0, 0)));
+//        HDF5ImageJ.hdf5write(ImageJFunctions.wrap(botSurfaceImg, "BotSurfaceMap"), outputDirectory + outputGroupname + "-bot" + ".h5", "/volume");
+//        System.out.println("Done writing bot");
+//
+//        try {
+//            BufferedWriter bw = new BufferedWriter(new FileWriter(outputDirectory + outputGroupname + "-bot.txt"));
+//            bw.write("" + botMean.getRealDouble());
+//            bw.close();
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
 
 
         // Process top
-        RandomAccessibleInterval topSurfaceImg = getScaledSurfaceMap(getTopImg(resliceImg, ops), resliceImg.dimension(2)/2, originalDimX, originalDimZ, ops);
+        RandomAccessibleInterval topSurfaceImg = getScaledSurfaceMap(getTopImg(resliceRai, ops), resliceRai.dimension(2)/2, originalDimX, originalDimZ, ops);
 
-        RealType topMean = ops.stats().mean(Views.iterable(Views.hyperSlice(topSurfaceImg, 0, 0)));
 //        try {
 //            //N5Utils.save(topSurfaceImg, n5, "/TopHeightmap", new int[]{512,512}, new Bzip2Compression());
 //            N5Utils.save(topSurfaceImg, n5, "/" + outputGroupname + "-top", n5BlockSize, new RawCompression());
 //        } catch (IOException e) {
 //            e.printStackTrace();
 //        }
-        HDF5ImageJ.hdf5write(ImageJFunctions.wrap(topSurfaceImg, "TopSurfaceMap"), outputDirectory + outputGroupname + "-top" + ".h5", "/volume");
-        System.out.println("Done writing top");
-
-        try {
-            BufferedWriter bw = new BufferedWriter(new FileWriter(outputDirectory + outputGroupname + "-top.txt"));
-            bw.write("" + topMean.getRealDouble());
-            bw.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+//        RealType topMean = ops.stats().mean(Views.iterable(Views.hyperSlice(topSurfaceImg, 0, 0)));
+//        HDF5ImageJ.hdf5write(ImageJFunctions.wrap(topSurfaceImg, "TopSurfaceMap"), outputDirectory + outputGroupname + "-top" + ".h5", "/volume");
+//        System.out.println("Done writing top");
+//
+//        try {
+//            BufferedWriter bw = new BufferedWriter(new FileWriter(outputDirectory + outputGroupname + "-top.txt"));
+//            bw.write("" + topMean.getRealDouble());
+//            bw.close();
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
 
         if( terminateOnCompletion )
             System.exit(0);
@@ -179,7 +178,6 @@ public class SurfaceFitCommand implements Command {
 
         // Rescale height values
         float heightScaleFactor = originalDimX / img.dimension(0) / 2;
-        //Img<RealType> surfaceImg = ImageJFunctions.wrapReal(surfaceImp);
         Cursor<IntType> surfaceCur = surfaceImg.cursor();
 
         DoubleType avg = new DoubleType(0);
@@ -223,10 +221,6 @@ public class SurfaceFitCommand implements Command {
             }
         };
         return pair;
-//
-//        ImagePlus scaledSurfaceImp = ImageJFunctions.wrap(interval, "Surface");
-//
-//        return scaledSurfaceImp;
     }
 
     /**
@@ -238,40 +232,16 @@ public class SurfaceFitCommand implements Command {
     public static RandomAccessibleInterval<IntType> getScaledSurfaceMap(Img img, long offset, long originalDimX, long originalDimZ, OpService ops) {
         final Img<IntType> surfaceImg = process2( img, 5, 40, 20 );
 
-
-//		final Img< FloatType > rendererSurface = img.factory().create( img );
-//		renderDepthMap( rendererSurface, surface );
-
-		//Gauss3.gauss( 0.7, Views.extendMirrorSingle( rendererSurface ), rendererSurface );
-//        ImagePlus input = Util.getImagePlusInstance(img);
-//        input.setTitle("Target");
-//		//input.show();
-
-//        ImagePlus surfaceImp = Util.getImagePlusInstance(surface);
-//        surfaceImp.setTitle("Surface");
-		//surfaceImp.show();
-
-//        ImagePlus rendererSurfaceImp = Util.getImagePlusInstance(rendererSurface);
-//        rendererSurfaceImp.setTitle("Generated surface");
-		//rendererSurfaceImp.show();
-
-        // To help with debugging
-//		IJ.run(input, "Reslice [/]...", "output=1.000 start=Top avoid");
-//		IJ.run(rendererSurfaceImp, "Reslice [/]...", "output=1.000 start=Top avoid");
-
         // Rescale height values
-        float heightScaleFactor = originalDimX / img.dimension(0) / 2;
-        //Img<RealType> surfaceImg = ImageJFunctions.wrapReal(surfaceImp);
+        float heightScaleFactor = ((float)originalDimX) / ((float)img.dimension(0)) / 2f;
+
         Cursor<IntType> surfaceCur = surfaceImg.cursor();
         while( surfaceCur.hasNext() ) {
             surfaceCur.fwd();
-            //surfaceCur.get().add(new IntType((int) offset));// FIXME beware of this casting
+            surfaceCur.get().add(new IntType((int) offset));// FIXME beware of this casting
             surfaceCur.get().mul(heightScaleFactor);
         }
 
-        // Smooth image
-
-        //surfaceImp.close();
         RandomAccessibleInterval<IntType> res = ops.filter().gauss(surfaceImg, 2);// this parameter differs from Dagmar's
 
         long[] newDims = new long[]{originalDimX, originalDimZ};
@@ -286,27 +256,16 @@ public class SurfaceFitCommand implements Command {
 			interp,
 			new Scale(scaleFactors))), new FinalInterval(newDims));
 
-//        surfaceImp = ImageJFunctions.wrap(res, "Surface");
-//
-//        // Upsample image
-//		IJ.run(surfaceImp, "Scale...", "x=- y=- width=" + originalDimX + " height=" + originalDimZ + " interpolation=Bicubic average create title=ScaleSurface");
-//        ImagePlus scaledSurfaceImp = WindowManager.getImage("ScaleSurface");
-//        scaledSurfaceImp.setTitle("ScaleSurfaceFetched");
-
         return interval;
-//
-//        ImagePlus scaledSurfaceImp = ImageJFunctions.wrap(interval, "Surface");
-//
-//        return scaledSurfaceImp;
     }
 
     public static Img getBotImg(RandomAccessibleInterval img, OpService ops) {
         FinalInterval botHalfInterval = Intervals.createMinMax(0, 0, 0, img.dimension(0)-1, img.dimension(1)-1, img.dimension(2)/2-1);
-        Img<FloatType> botImg = ops.create().img(botHalfInterval, new FloatType());
+        Img<DoubleType> botImg = ops.create().img(botHalfInterval, new DoubleType());
 
-        IterableInterval<UnsignedByteType> botView = Views.interval(img, botHalfInterval);
-        Cursor<UnsignedByteType> botViewCur = botView.cursor();
-        Cursor<FloatType> botCur = botImg.cursor();
+        IterableInterval<DoubleType> botView = Views.interval(img, botHalfInterval);
+        Cursor<DoubleType> botViewCur = botView.cursor();
+        Cursor<DoubleType> botCur = botImg.cursor();
         while(botCur.hasNext()) {
             botCur.fwd();
             botViewCur.fwd();
@@ -318,11 +277,11 @@ public class SurfaceFitCommand implements Command {
     public static Img getTopImg(RandomAccessibleInterval img, OpService ops) {
         FinalInterval topHalfInterval = Intervals.createMinMax(0, 0, img.dimension(2)/2, img.dimension(0)-1, img.dimension(1)-1, img.dimension(2)-1);
         FinalInterval topIntervalSize = Intervals.createMinMax(0, 0, 0, topHalfInterval.dimension(0)-1, topHalfInterval.dimension(1)-1, topHalfInterval.dimension(2)-1);
-        Img<FloatType> topImg = ops.create().img(topIntervalSize, new FloatType());
+        Img<DoubleType> topImg = ops.create().img(topIntervalSize, new DoubleType());
 
-        IterableInterval<UnsignedByteType> topView = Views.interval(img, topHalfInterval);
-        Cursor<UnsignedByteType> topViewCur = topView.cursor();
-        Cursor<FloatType> topCur = topImg.cursor();
+        IterableInterval<DoubleType> topView = Views.interval(img, topHalfInterval);
+        Cursor<DoubleType> topViewCur = topView.cursor();
+        Cursor<DoubleType> topCur = topImg.cursor();
         while(topCur.hasNext()) {
             topCur.fwd();
             topViewCur.fwd();
