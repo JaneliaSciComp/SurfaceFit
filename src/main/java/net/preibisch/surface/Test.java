@@ -75,7 +75,7 @@ public class Test
 	}
 
 	public static < T extends RealType<T> > Img< IntType > process2(
-			final Img< T > cost_orig,
+			final RandomAccessibleInterval< T > cost_orig,
 			final int max_dz, // max delta z, default = 1, constraint on the surface altitude change from one pixel to another
 			final int min_dist, // Max_distance between surfaces (in pixel), default = 15
 			final int max_dist // Min_distance between surfaces (in pixel), default = 3

@@ -3,9 +3,7 @@ package de.mpicbg.scf.mincostsurface;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.imglib2.Cursor;
-import net.imglib2.RandomAccess;
-import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.*;
 import net.imglib2.img.Img;
 import net.imglib2.img.ImgFactory;
 import net.imglib2.img.array.ArrayImgFactory;
@@ -21,6 +19,7 @@ import net.imglib2.type.numeric.integer.IntType;
 import net.imglib2.type.numeric.real.FloatType;
 import graphcut.GraphCut;
 import graphcut.Terminal;
+import net.imglib2.view.Views;
 
 //import graphcut_algo.GraphCut;
 //import graphcut_algo.Terminal;
@@ -109,53 +108,120 @@ public class MinCostZSurface < T extends RealType<T> >{
 
 	/**
 	 * This methods solve the maxFlow problem for the surfaces defined and the inter-surface constraints
-	 *  
+	 *
 	 * @return
 	 */
 	public boolean Process()
 	{
 		if( n_surface<=0)
 			return false;
-		
-		
+
+
 		// determine the number of nodes (except terminal nodes)
 		int nNodes = (int)(n_surface*dimensions[0]*dimensions[1]*dimensions[2]);
-		
+
 		// determine the number of edges in the graph (except edges from or to terminals)
 		int nEdges = 0;
 		for(int i=0; i<graphs_edges.size(); i++)
 			nEdges += graphs_edges.get(i)[0].length;
-				
+
 		// instanciate the solver
 		graphCut_Solver = new GraphCut( nNodes, nEdges );
-		
+
 		// feed the graphcut solver with the surface graphs and surfaces constraints
 		for(int i=0; i<graphs_edges.size(); i++)
 		{
 			int[][] edges = graphs_edges.get(i);
 			float[][] ws = graphs_edges_weights.get(i);
-			for( int j=0; j<edges[0].length; j++) 
+			for( int j=0; j<edges[0].length; j++)
 				graphCut_Solver.setEdgeWeight(edges[0][j], edges[1][j], ws[0][j], ws[1][j]);
 		}
-		
+
 		for(int i=0; i<graphs_terminal_weights.size(); i++)
 		{
 			float[][] tw = graphs_terminal_weights.get(i);
 			for( int j=0; j<tw[0].length; j++)
-				graphCut_Solver.setTerminalWeights(j+i*nNodes/n_surface, tw[0][j], tw[1][j]);	
+				graphCut_Solver.setTerminalWeights(j+i*nNodes/n_surface, tw[0][j], tw[1][j]);
 		}
-		
+
 		// Solve the mincut maxflow problem
 		maxFlow = graphCut_Solver.computeMaximumFlow(false, null);
-		
+
 		isProcessed = true;
-		
+
+		return true;
+	}
+
+	/**
+	 * This methods solve the maxFlow problem for the surfaces defined and the inter-surface constraints
+	 *
+	 * @return
+	 */
+	public boolean ProcessWithNails(List<RealLocalizable> nails, float nailWeight)
+	{
+		if( n_surface<=0)
+			return false;
+		// determine the number of nodes (except terminal nodes)
+		int nNodes = (int)(n_surface*dimensions[0]*dimensions[1]*dimensions[2]);
+
+		long nNodes_perSurf = dimensions[0]*dimensions[1]*dimensions[2];
+		long Width = dimensions[0];
+		long Slice = dimensions[0]*dimensions[1];
+		// load nails into solver
+		for(int i=0; i<nails.size(); i++)
+		{
+			long posIdx = (long) (nails.get(0).getDoublePosition(0)+ nails.get(0).getDoublePosition(1)*Width + nails.get(0).getDoublePosition(2)*Slice);
+			long current_offset = (n_surface) * nNodes_perSurf + posIdx;
+
+//			graphs_edges.get()
+//
+//			Edges[0][EdgeCount] = (int)current_offset;
+//			Edges[1][EdgeCount] = (int)current_offset - (int)Slice;
+//			Edges_weights[0][EdgeCount] = infiniteWeight;
+//			Edges_weights[1][EdgeCount] = zeroWeight;
+//			Terminal_weights[0][(int)posIdx] = zeroWeight;
+//			Terminal_weights[1][(int)posIdx] = w;
+//
+//			graphCut_Solver.setEdgeWeight(, , ws[0][j], ws[1][j]);
+
+		}
+
+		// determine the number of edges in the graph (except edges from or to terminals)
+		int nEdges = 0;
+		for(int i=0; i<graphs_edges.size(); i++)
+			nEdges += graphs_edges.get(i)[0].length;
+
+		nEdges += nails.size();
+
+		// instanciate the solver
+		graphCut_Solver = new GraphCut( nNodes, nEdges );
+
+		// feed the graphcut solver with the surface graphs and surfaces constraints
+		for(int i=0; i<graphs_edges.size(); i++)
+		{
+			int[][] edges = graphs_edges.get(i);
+			float[][] ws = graphs_edges_weights.get(i);
+			for( int j=0; j<edges[0].length; j++)
+				graphCut_Solver.setEdgeWeight(edges[0][j], edges[1][j], ws[0][j], ws[1][j]);
+		}
+
+		for(int i=0; i<graphs_terminal_weights.size(); i++)
+		{
+			float[][] tw = graphs_terminal_weights.get(i);
+			for( int j=0; j<tw[0].length; j++)
+				graphCut_Solver.setTerminalWeights(j+i*nNodes/n_surface, tw[0][j], tw[1][j]);
+		}
+
+		// Solve the mincut maxflow problem
+		maxFlow = graphCut_Solver.computeMaximumFlow(false, null);
+
+		isProcessed = true;
+
 		return true;
 	}
 	
 	
-	
-	public boolean Create_Surface_Graph(Img<T> image_cost, int max_dz)
+	public boolean Create_Surface_Graph(RandomAccessibleInterval<T> image_cost, int max_dz)
 	{
 		float factor = 1f;
 		return Create_Surface_Graph( image_cost, max_dz, factor);
@@ -164,21 +230,21 @@ public class MinCostZSurface < T extends RealType<T> >{
 	
 	/**
 	 * This method build the graph to detect a minimum cost surface in a cost volumes and with a constraints on altitude variation
-	 * 
-	 * @param image_cost cost function 
+	 *
+	 * @param image_cost cost function
 	 * @param max_dz maximum altitude variation between 2 pixels
 	 * @param factor positive multiplicative value to make intensity in both surfaces look similar
 	 */
-	public boolean Create_Surface_Graph(Img<T> image_cost, int max_dz, float factor)
+	public boolean Create_Surface_Graph(RandomAccessibleInterval<T> image_cost, int max_dz, float factor)
 	{
 		/////////////////////////////////////////////
 		// Check input validity /////////////////////
 		boolean isOk=true;
-		
-		int nDim = image_cost.numDimensions(); 
+
+		int nDim = image_cost.numDimensions();
 		long[] dims = new long[nDim];
 		image_cost.dimensions(dims);
-		
+
 		if( nDim !=3)
 			isOk=false;
 		if (dimensions == null & isOk)
@@ -191,14 +257,14 @@ public class MinCostZSurface < T extends RealType<T> >{
 		}
 		if( max_dz<0 )
 			isOk= false;
-		
+
 		if(!isOk)
 			return false;
-		
+
 		////////////////////////////////////////////////////////////////////////////////////////////
 		// define surface graph edges using image_cost for the weights /////////////////////////////
-		
-			
+
+
 		long Width = dimensions[0];
 		long Slice = dimensions[0]*dimensions[1];
 		long nNodes_perSurf = dimensions[0]*dimensions[1]*dimensions[2];
@@ -210,12 +276,12 @@ public class MinCostZSurface < T extends RealType<T> >{
 		for(int i=0; i<2; i++){  Edges_weights[i] = new float[(int)nEdges];  }
 		float[][] Terminal_weights = new float[2][];
 		for(int i=0; i<2; i++){  Terminal_weights[i] = new float[(int)nNodes_perSurf];  }
-		
+
 		int EdgeCount = 0;
-		
-		
+
+
 		// defining the neighborhood //////////////////////////////////////////////////////////////
-		
+
 		// neighbor definition for planes z>0
 		int nNeigh = 5;
 		int[][] neigh_pos_to_current = new int[nNeigh][];
@@ -224,49 +290,49 @@ public class MinCostZSurface < T extends RealType<T> >{
 		neigh_pos_to_current[2] = new int[] { 0,-1,-max_dz};
 		neigh_pos_to_current[3] = new int[] { 0, 1,-max_dz};
 		neigh_pos_to_current[4] = new int[] { 0, 0,-1};
-		
+
 		long[] neigh_offset_to_current = new long[nNeigh];
 		for(int i = 0; i<nNeigh; i++)
-			neigh_offset_to_current[i] = neigh_pos_to_current[i][0] + neigh_pos_to_current[i][1] * Width + neigh_pos_to_current[i][2] * Slice ;				                     
-		
+			neigh_offset_to_current[i] = neigh_pos_to_current[i][0] + neigh_pos_to_current[i][1] * Width + neigh_pos_to_current[i][2] * Slice ;
+
 		int[][] neigh_pos_to_previous = new int[nNeigh][];
-		neigh_pos_to_previous[0] = neigh_pos_to_current[0]; 
+		neigh_pos_to_previous[0] = neigh_pos_to_current[0];
 		for(int i = 1; i<nNeigh; i++)
 		{	neigh_pos_to_previous[i] = new int[nDim];
 			for (int j = 0; j<nDim; j++)
 				neigh_pos_to_previous[i][j] =  neigh_pos_to_current[i][j] -  neigh_pos_to_current[i-1][j];
-		}	
-		
+		}
+
 		// defining a factory to test out of bound conditions
-		T outOfBoundValue = image_cost.firstElement();
+		T outOfBoundValue = Views.iterable(image_cost).firstElement();
 		outOfBoundValue.setZero();
 		final OutOfBoundsFactory< T, RandomAccessibleInterval< T >> oobImageFactory =  new OutOfBoundsConstantValueFactory< T, RandomAccessibleInterval< T >>( outOfBoundValue );
 		final OutOfBounds< T > imagex = oobImageFactory.create( image_cost );
-		
-		
+
+
 		// iterator over the image pixels
-		Cursor<T> image_cursor = image_cost.cursor();
+		Cursor<T> image_cursor = Views.iterable(image_cost).cursor();
 		int[] position = new int[] {0,0,0};
 		long current_offset;
 		float w=0;
-		
-		
+
+
 		image_cursor.reset();
 		while ( image_cursor.hasNext() )
-        {	
+        {
 			image_cursor.fwd();
 			w = factor * image_cursor.get().getRealFloat();
 			image_cursor.localize(position);
 			long posIdx = position[0]+ position[1]*Width + position[2]*Slice;
 			current_offset = (n_surface)*nNodes_perSurf + posIdx;
 			imagex.setPosition(position);
-			
+
 			if (position[2]>max_dz)
 			{	for(int i =0; i<nNeigh; i++)
 				{
 					imagex.move(neigh_pos_to_previous[i]);
 					// go to the next neighbor if the current neighbor is out of bound
-					if (imagex.isOutOfBounds()){ continue;} 
+					if (imagex.isOutOfBounds()){ continue;}
 					// else set a new edge
 					//graphCut_Solver.setEdgeWeight( (int) current_offset, (int)current_offset + (int)neigh_offset_to_current[i], infiniteWeight, zeroWeight );
 					Edges[0][EdgeCount] = (int)current_offset;
@@ -278,48 +344,204 @@ public class MinCostZSurface < T extends RealType<T> >{
 				w -= factor * imagex.get().getRealFloat();
 			}
 			else if (position[2]>0)
-			{	
+			{
 				//graphCut_Solver.setEdgeWeight( (int)current_offset, (int)current_offset - (int)Slice, infiniteWeight, zeroWeight );
 				Edges[0][EdgeCount] = (int)current_offset;
 				Edges[1][EdgeCount] = (int)current_offset - (int)Slice;
 				Edges_weights[0][EdgeCount] = infiniteWeight;
 				Edges_weights[1][EdgeCount] = zeroWeight;
 				EdgeCount++;
-				
+
 				imagex.move(new int[] {0,0,-1}); // no need to test for out of bound here
 				w -= factor * imagex.get().getRealFloat();
 			}
 			else
 				w = -infiniteWeight;
-			
+
 			// set edges to source and sink
 			if (w<0)
 			{
-				Terminal_weights[0][(int)posIdx] = -w; 
-				Terminal_weights[1][(int)posIdx] = zeroWeight; 
+				Terminal_weights[0][(int)posIdx] = -w;
+				Terminal_weights[1][(int)posIdx] = zeroWeight;
 				//graphCut_Solver.setTerminalWeights( (int)current_offset, -w, zeroWeight); // as far as I understand set a link from source to current pixel
 			}
 			else if (w>0)
 			{
-				Terminal_weights[0][(int)posIdx] = zeroWeight; 
-				Terminal_weights[1][(int)posIdx] = w; 
+				Terminal_weights[0][(int)posIdx] = zeroWeight;
+				Terminal_weights[1][(int)posIdx] = w;
 				//graphCut_Solver.setTerminalWeights( (int)current_offset, zeroWeight, w);
 			}
-			
+
         }
-		
-		
+
+
 		graphs_edges.add(Edges);
 		graphs_edges_weights.add(Edges_weights);
 		graphs_terminal_weights.add(Terminal_weights);
 		// increment the number of surface set and return success of the operation
 		n_surface++;
 
-		
+
 		return true;
 	}
 	
-	
+		/**
+	 * This method build the graph to detect a minimum cost surface in a cost volumes and with a constraints on altitude variation
+	 *
+	 * @param image_cost cost function
+	 * @param max_dz maximum altitude variation between 2 pixels
+	 * @param factor positive multiplicative value to make intensity in both surfaces look similar
+	 * @param nails fixed locations determined externally/manually
+	 */
+	public boolean Create_Surface_Graph_with_Nails(Img<T> image_cost, int max_dz, float factor, List<RealPositionable> nails)
+	{
+		/////////////////////////////////////////////
+		// Check input validity /////////////////////
+		boolean isOk=true;
+
+		int nDim = image_cost.numDimensions();
+		long[] dims = new long[nDim];
+		image_cost.dimensions(dims);
+
+		if( nDim !=3)
+			isOk=false;
+		if (dimensions == null & isOk)
+			dimensions = dims;
+		else // check that the dimensions of the new image function is consistent with earlier one
+		{
+			for(int i=0; i<nDim; i++)
+				if(dimensions[i]!=dims[i])
+					isOk= false;
+		}
+		if( max_dz<0 )
+			isOk= false;
+
+		if(!isOk)
+			return false;
+
+		////////////////////////////////////////////////////////////////////////////////////////////
+		// define surface graph edges using image_cost for the weights /////////////////////////////
+
+
+		long Width = dimensions[0];
+		long Slice = dimensions[0]*dimensions[1];
+		long nNodes_perSurf = dimensions[0]*dimensions[1]*dimensions[2];
+		long nEdges = (dimensions[2]-1)*Slice + (dimensions[2]-max_dz-1) * 2 * ((dimensions[1]-1)*dimensions[0]  + dimensions[1]*(dimensions[0]-1) ) ;
+
+		int[][] Edges = new int[2][];
+		for(int i=0; i<2; i++){  Edges[i] = new int[(int)nEdges];  }
+		float[][] Edges_weights = new float[2][];
+		for(int i=0; i<2; i++){  Edges_weights[i] = new float[(int)nEdges];  }
+		float[][] Terminal_weights = new float[2][];
+		for(int i=0; i<2; i++){  Terminal_weights[i] = new float[(int)nNodes_perSurf];  }
+
+		int EdgeCount = 0;
+
+
+		// defining the neighborhood //////////////////////////////////////////////////////////////
+
+		// neighbor definition for planes z>0
+		int nNeigh = 5;
+		int[][] neigh_pos_to_current = new int[nNeigh][];
+		neigh_pos_to_current[0] = new int[] {-1, 0,-max_dz};
+		neigh_pos_to_current[1] = new int[] { 1, 0,-max_dz};
+		neigh_pos_to_current[2] = new int[] { 0,-1,-max_dz};
+		neigh_pos_to_current[3] = new int[] { 0, 1,-max_dz};
+		neigh_pos_to_current[4] = new int[] { 0, 0,-1};
+
+		long[] neigh_offset_to_current = new long[nNeigh];
+		for(int i = 0; i<nNeigh; i++)
+			neigh_offset_to_current[i] = neigh_pos_to_current[i][0] + neigh_pos_to_current[i][1] * Width + neigh_pos_to_current[i][2] * Slice ;
+
+		int[][] neigh_pos_to_previous = new int[nNeigh][];
+		neigh_pos_to_previous[0] = neigh_pos_to_current[0];
+		for(int i = 1; i<nNeigh; i++)
+		{	neigh_pos_to_previous[i] = new int[nDim];
+			for (int j = 0; j<nDim; j++)
+				neigh_pos_to_previous[i][j] =  neigh_pos_to_current[i][j] -  neigh_pos_to_current[i-1][j];
+		}
+
+		// defining a factory to test out of bound conditions
+		T outOfBoundValue = image_cost.firstElement();
+		outOfBoundValue.setZero();
+		final OutOfBoundsFactory< T, RandomAccessibleInterval< T >> oobImageFactory =  new OutOfBoundsConstantValueFactory< T, RandomAccessibleInterval< T >>( outOfBoundValue );
+		final OutOfBounds< T > imagex = oobImageFactory.create( image_cost );
+
+
+		// iterator over the image pixels
+		Cursor<T> image_cursor = image_cost.cursor();
+		int[] position = new int[] {0,0,0};
+		long current_offset;
+		float w=0;
+
+
+		image_cursor.reset();
+		while ( image_cursor.hasNext() )
+        {
+			image_cursor.fwd();
+			w = factor * image_cursor.get().getRealFloat();
+			image_cursor.localize(position);
+			long posIdx = position[0]+ position[1]*Width + position[2]*Slice;
+			current_offset = (n_surface)*nNodes_perSurf + posIdx;
+			imagex.setPosition(position);
+
+			if (position[2]>max_dz)
+			{	for(int i =0; i<nNeigh; i++)
+				{
+					imagex.move(neigh_pos_to_previous[i]);
+					// go to the next neighbor if the current neighbor is out of bound
+					if (imagex.isOutOfBounds()){ continue;}
+					// else set a new edge
+					//graphCut_Solver.setEdgeWeight( (int) current_offset, (int)current_offset + (int)neigh_offset_to_current[i], infiniteWeight, zeroWeight );
+					Edges[0][EdgeCount] = (int)current_offset;
+					Edges[1][EdgeCount] = (int)current_offset + (int)neigh_offset_to_current[i];
+					Edges_weights[0][EdgeCount] = infiniteWeight;
+					Edges_weights[1][EdgeCount] = zeroWeight;
+					EdgeCount++;
+				}
+				w -= factor * imagex.get().getRealFloat();
+			}
+			else if (position[2]>0)
+			{
+				//graphCut_Solver.setEdgeWeight( (int)current_offset, (int)current_offset - (int)Slice, infiniteWeight, zeroWeight );
+				Edges[0][EdgeCount] = (int)current_offset;
+				Edges[1][EdgeCount] = (int)current_offset - (int)Slice;
+				Edges_weights[0][EdgeCount] = infiniteWeight;
+				Edges_weights[1][EdgeCount] = zeroWeight;
+				EdgeCount++;
+
+				imagex.move(new int[] {0,0,-1}); // no need to test for out of bound here
+				w -= factor * imagex.get().getRealFloat();
+			}
+			else
+				w = -infiniteWeight;
+
+			// set edges to source and sink
+			if (w<0)
+			{
+				Terminal_weights[0][(int)posIdx] = -w;
+				Terminal_weights[1][(int)posIdx] = zeroWeight;
+				//graphCut_Solver.setTerminalWeights( (int)current_offset, -w, zeroWeight); // as far as I understand set a link from source to current pixel
+			}
+			else if (w>0)
+			{
+				Terminal_weights[0][(int)posIdx] = zeroWeight;
+				Terminal_weights[1][(int)posIdx] = w;
+				//graphCut_Solver.setTerminalWeights( (int)current_offset, zeroWeight, w);
+			}
+
+        }
+
+
+		graphs_edges.add(Edges);
+		graphs_edges_weights.add(Edges_weights);
+		graphs_terminal_weights.add(Terminal_weights);
+		// increment the number of surface set and return success of the operation
+		n_surface++;
+
+
+		return true;
+	}
 	
 	
 	
