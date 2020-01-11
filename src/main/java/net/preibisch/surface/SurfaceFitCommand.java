@@ -233,13 +233,13 @@ public class SurfaceFitCommand implements Command {
         final Img<IntType> surfaceImg = process2( img, 5, 40, 20 );
 
         // Rescale height values
-        float heightScaleFactor = ((float)originalDimX) / ((float)img.dimension(0)) / 2f;
+        //float heightScaleFactor = ((float)originalDimX) / ((float)img.dimension(0)) / 2f;
 
         Cursor<IntType> surfaceCur = surfaceImg.cursor();
         while( surfaceCur.hasNext() ) {
             surfaceCur.fwd();
             surfaceCur.get().add(new IntType((int) offset));// FIXME beware of this casting
-            surfaceCur.get().mul(heightScaleFactor);
+            //surfaceCur.get().mul(heightScaleFactor);
         }
 
         RandomAccessibleInterval<IntType> res = ops.filter().gauss(surfaceImg, 2);// this parameter differs from Dagmar's
