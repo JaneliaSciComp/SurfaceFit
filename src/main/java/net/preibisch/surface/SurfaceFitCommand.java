@@ -173,7 +173,7 @@ public class SurfaceFitCommand implements Command {
      * @param offset - this accounts for the fact that processing the "top" is run in an interval offset
      * @return
      */
-    public static Pair<RandomAccessibleInterval<IntType>, DoubleType> getScaledSurfaceMapAndAverage(Img img, long offset, long originalDimX, long originalDimZ, OpService ops) {
+    public static Pair<RandomAccessibleInterval<IntType>, DoubleType> getScaledSurfaceMapAndAverage(RandomAccessibleInterval img, long offset, long originalDimX, long originalDimZ, OpService ops) {
         final Img<IntType> surfaceImg = process2( img, 5, 40, 20 );
 
         // Rescale height values
@@ -229,7 +229,7 @@ public class SurfaceFitCommand implements Command {
      * @param offset - this accounts for the fact that processing the "top" is run in an interval offset
      * @return
      */
-    public static RandomAccessibleInterval<IntType> getScaledSurfaceMap(Img img, long offset, long originalDimX, long originalDimZ, OpService ops) {
+    public static RandomAccessibleInterval<IntType> getScaledSurfaceMap(RandomAccessibleInterval img, long offset, long originalDimX, long originalDimZ, OpService ops) {
         final Img<IntType> surfaceImg = process2( img, 5, 40, 20 );
 
         // Rescale height values
