@@ -194,7 +194,11 @@ public class SurfaceFitCommand implements Command {
         }
         avg.div(new DoubleType(count));
 
-        RandomAccessibleInterval<IntType> res = ops.filter().gauss(surfaceImg, 2);// this parameter differs from Dagmar's
+        long[] border = new long[]{10, 10};// TODO border chosen arbitrarily
+        RandomAccessibleInterval<IntType> extendedSurfaceImg = Views.interval(Views.extendMirrorSingle(surfaceImg),
+                new long[]{surfaceImg.min(0) - border[0], surfaceImg.min(1) - border[1]},
+                new long[]{surfaceImg.max(0) + border[0], surfaceImg.max(1) + border[1]});
+        RandomAccessibleInterval<IntType> res = ops.filter().gauss(extendedSurfaceImg, 2.0);// this parameter differs from Dagmar's
 
         long[] newDims = new long[]{originalDimX, originalDimZ};
 
@@ -233,13 +237,13 @@ public class SurfaceFitCommand implements Command {
         final Img<IntType> surfaceImg = process2( img, 5, 40, 20 );
 
         // Rescale height values
-        //float heightScaleFactor = ((float)originalDimX) / ((float)img.dimension(0)) / 2f;
+        float heightScaleFactor = ((float)originalDimX) / ((float)img.dimension(0)) / 2f;
 
         Cursor<IntType> surfaceCur = surfaceImg.cursor();
         while( surfaceCur.hasNext() ) {
             surfaceCur.fwd();
+            surfaceCur.get().mul(heightScaleFactor);
             surfaceCur.get().add(new IntType((int) offset));// FIXME beware of this casting
-            //surfaceCur.get().mul(heightScaleFactor);
         }
 
         RandomAccessibleInterval<IntType> res = ops.filter().gauss(surfaceImg, 2);// this parameter differs from Dagmar's
