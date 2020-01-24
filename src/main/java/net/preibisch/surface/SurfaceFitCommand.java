@@ -167,65 +167,67 @@ public class SurfaceFitCommand implements Command {
             System.exit(0);
     }
 
-        /**
-     *
-     * @param img
-     * @param offset - this accounts for the fact that processing the "top" is run in an interval offset
-     * @return
-     */
-    public static Pair<RandomAccessibleInterval<IntType>, DoubleType> getScaledSurfaceMapAndAverage(RandomAccessibleInterval img, long offset, long originalDimX, long originalDimZ, OpService ops) {
-        final Img<IntType> surfaceImg = process2( img, 5, 40, 20 );
-
-        // Rescale height values
-        float heightScaleFactor = originalDimX / img.dimension(0) / 2;
-        Cursor<IntType> surfaceCur = surfaceImg.cursor();
-
-        DoubleType avg = new DoubleType(0);
-        DoubleType tmp = new DoubleType();
-
-        long count = 0;
-        while( surfaceCur.hasNext() ) {
-            surfaceCur.fwd();
-            surfaceCur.get().add(new IntType((int) offset));
-            surfaceCur.get().mul(heightScaleFactor);
-            tmp.setReal(surfaceCur.get().getRealDouble());
-            avg.add(tmp);
-            count++;
-        }
-        avg.div(new DoubleType(count));
-
-        long[] border = new long[]{10, 10};// TODO border chosen arbitrarily
-        RandomAccessibleInterval<IntType> extendedSurfaceImg = Views.interval(Views.extendMirrorSingle(surfaceImg),
-                new long[]{surfaceImg.min(0) - border[0], surfaceImg.min(1) - border[1]},
-                new long[]{surfaceImg.max(0) + border[0], surfaceImg.max(1) + border[1]});
-        RandomAccessibleInterval<IntType> res = ops.filter().gauss(extendedSurfaceImg, 2.0);// this parameter differs from Dagmar's
-
-        long[] newDims = new long[]{originalDimX, originalDimZ};
-
-        NLinearInterpolatorFactory<IntType> interpolatorFactory = new NLinearInterpolatorFactory<>();
-
-        double[] scaleFactors = new double[]{originalDimX / res.dimension(0), originalDimZ / res.dimension(1)};
-
-        RealRandomAccessible<IntType> interp = Views.interpolate(Views.extendMirrorSingle(res), interpolatorFactory);
-
-        IntervalView<IntType> interval = Views.interval(Views.raster(RealViews.affineReal(
-			interp,
-			new Scale(scaleFactors))), new FinalInterval(newDims));
-
-
-        Pair<RandomAccessibleInterval<IntType>, DoubleType> pair = new Pair<RandomAccessibleInterval<IntType>, DoubleType>() {
-            @Override
-            public RandomAccessibleInterval<IntType> getA() {
-                return interval;
-            }
-
-            @Override
-            public DoubleType getB() {
-                return avg;
-            }
-        };
-        return pair;
-    }
+//        /**
+//     *
+//     * @param img
+//     * @param offset - this accounts for the fact that processing the "top" is run in an interval offset
+//     * @return
+//     */
+//    public static Pair<RandomAccessibleInterval<IntType>, DoubleType> getScaledSurfaceMapAndAverage(RandomAccessibleInterval img, long offset, long originalDimX, long originalDimZ, OpService ops) {
+//        final Img<IntType> surfaceImg = process2( img, 5, 40, 20 );
+//
+//        // Rescale height values
+//        float heightScaleFactor = originalDimX / img.dimension(0) / 2;
+//        Cursor<IntType> surfaceCur = surfaceImg.cursor();
+//
+//        DoubleType avg = new DoubleType(0);
+//        DoubleType tmp = new DoubleType();
+//
+//        long count = 0;
+//        while( surfaceCur.hasNext() ) {
+//            surfaceCur.fwd();
+//            surfaceCur.get().add(new IntType((int) offset));
+//            surfaceCur.get().mul(heightScaleFactor);
+//            tmp.setReal(surfaceCur.get().getRealDouble());
+//            avg.add(tmp);
+//            count++;
+//        }
+//        avg.div(new DoubleType(count));
+//
+////        long[] border = new long[]{10, 10};// TODO border chosen arbitrarily
+////        RandomAccessibleInterval<IntType> extendedSurfaceImg = Views.interval(Views.extendMirrorSingle(surfaceImg),
+////                new long[]{surfaceImg.min(0) - border[0], surfaceImg.min(1) - border[1]},
+////                new long[]{surfaceImg.max(0) + border[0], surfaceImg.max(1) + border[1]});
+////        RandomAccessibleInterval<IntType> res = ops.filter().gauss(extendedSurfaceImg, 2.0);// this parameter differs from Dagmar's
+//        // TODO get gaussian border stuff working
+//        RandomAccessibleInterval<IntType> res = surfaceImg;
+//
+//        long[] newDims = new long[]{originalDimX, originalDimZ};
+//
+//        NLinearInterpolatorFactory<IntType> interpolatorFactory = new NLinearInterpolatorFactory<>();
+//
+//        double[] scaleFactors = new double[]{originalDimX / res.dimension(0), originalDimZ / res.dimension(1)};
+//
+//        RealRandomAccessible<IntType> interp = Views.interpolate(Views.extendMirrorSingle(res), interpolatorFactory);
+//
+//        IntervalView<IntType> interval = Views.interval(Views.raster(RealViews.affineReal(
+//			interp,
+//			new Scale(scaleFactors))), new FinalInterval(newDims));
+//
+//
+//        Pair<RandomAccessibleInterval<IntType>, DoubleType> pair = new Pair<RandomAccessibleInterval<IntType>, DoubleType>() {
+//            @Override
+//            public RandomAccessibleInterval<IntType> getA() {
+//                return interval;
+//            }
+//
+//            @Override
+//            public DoubleType getB() {
+//                return avg;
+//            }
+//        };
+//        return pair;
+//    }
 
     /**
      *
@@ -237,7 +239,7 @@ public class SurfaceFitCommand implements Command {
         final Img<IntType> surfaceImg = process2( img, 5, 40, 20 );
 
         // Rescale height values
-        float heightScaleFactor = ((float)originalDimX) / ((float)img.dimension(0)) / 2f;
+        float heightScaleFactor = ((float)originalDimX) / ((float)img.dimension(0));
 
         Cursor<IntType> surfaceCur = surfaceImg.cursor();
         while( surfaceCur.hasNext() ) {
@@ -246,7 +248,13 @@ public class SurfaceFitCommand implements Command {
             surfaceCur.get().add(new IntType((int) offset));// FIXME beware of this casting
         }
 
-        RandomAccessibleInterval<IntType> res = ops.filter().gauss(surfaceImg, 2);// this parameter differs from Dagmar's
+//        long[] border = new long[]{10, 10};// TODO border chosen arbitrarily
+//        RandomAccessibleInterval<IntType> extendedSurfaceImg = Views.interval(Views.extendMirrorSingle(surfaceImg),
+//                new long[]{surfaceImg.min(0) - border[0], surfaceImg.min(1) - border[1]},
+//                new long[]{surfaceImg.max(0) + border[0], surfaceImg.max(1) + border[1]});
+//        RandomAccessibleInterval<IntType> res = ops.filter().gauss(extendedSurfaceImg, 2.0);// this parameter differs from Dagmar's
+        // TODO get gaussian border stuff working
+        RandomAccessibleInterval<IntType> res = surfaceImg;
 
         long[] newDims = new long[]{originalDimX, originalDimZ};
 
