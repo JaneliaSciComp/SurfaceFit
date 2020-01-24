@@ -119,7 +119,7 @@ public class SurfaceFitCommand implements Command {
 //        }
 
         // Process bottom
-        RandomAccessibleInterval botSurfaceImg = getScaledSurfaceMap(getBotImg(resliceRai, ops), 0, originalDimX, originalDimZ, ops);
+        //RandomAccessibleInterval botSurfaceImg = getScaledSurfaceMap(getBotImg(resliceRai, ops), 0, originalDimX, originalDimZ, ops);
 
 //        try {
 //            //N5Utils.save(botSurfaceImg, n5, "/BotHeightmap", new int[]{512,512}, new Bzip2Compression());
@@ -143,7 +143,7 @@ public class SurfaceFitCommand implements Command {
 
 
         // Process top
-        RandomAccessibleInterval topSurfaceImg = getScaledSurfaceMap(getTopImg(resliceRai, ops), resliceRai.dimension(2)/2, originalDimX, originalDimZ, ops);
+        //RandomAccessibleInterval topSurfaceImg = getScaledSurfaceMap(getTopImg(resliceRai, ops), resliceRai.dimension(2)/2, originalDimX, originalDimZ, ops);
 
 //        try {
 //            //N5Utils.save(topSurfaceImg, n5, "/TopHeightmap", new int[]{512,512}, new Bzip2Compression());
@@ -235,11 +235,11 @@ public class SurfaceFitCommand implements Command {
      * @param offset - this accounts for the fact that processing the "top" is run in an interval offset
      * @return
      */
-    public static RandomAccessibleInterval<IntType> getScaledSurfaceMap(RandomAccessibleInterval img, long offset, long originalDimX, long originalDimZ, OpService ops) {
+    public static RandomAccessibleInterval<IntType> getScaledSurfaceMap(RandomAccessibleInterval img, long offset, long originalDimX, long originalDimZ, OpService ops, float heightScaleFactor) {
         final Img<IntType> surfaceImg = process2( img, 5, 40, 20 );
 
-        // Rescale height values
-        float heightScaleFactor = ((float)originalDimX) / ((float)img.dimension(0));
+        // Rescale height values (this was propagated to the calling method, because it should behave differently for subsampled images)
+        //float heightScaleFactor = ((float)originalDimX) / ((float)img.dimension(0));
 
         Cursor<IntType> surfaceCur = surfaceImg.cursor();
         while( surfaceCur.hasNext() ) {
