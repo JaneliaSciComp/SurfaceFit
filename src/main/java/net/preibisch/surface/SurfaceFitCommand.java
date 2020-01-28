@@ -260,8 +260,9 @@ public class SurfaceFitCommand implements Command {
 
         NLinearInterpolatorFactory<IntType> interpolatorFactory = new NLinearInterpolatorFactory<>();
 
-        double[] scaleFactors = new double[]{originalDimX / res.dimension(0), originalDimZ / res.dimension(1)};
+        double[] scaleFactors = new double[]{(float) originalDimX / res.dimension(0), (float) originalDimZ / res.dimension(1)};
 
+        //RealRandomAccessible<IntType> interp = Views.interpolate(Views.extendMirrorSingle(res), interpolatorFactory);
         RealRandomAccessible<IntType> interp = Views.interpolate(Views.extendMirrorSingle(res), interpolatorFactory);
 
         IntervalView<IntType> interval = Views.interval(Views.raster(RealViews.affineReal(
