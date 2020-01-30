@@ -235,7 +235,7 @@ public class SurfaceFitCommand implements Command {
      * @param offset - this accounts for the fact that processing the "top" is run in an interval offset
      * @return
      */
-    public static RandomAccessibleInterval<IntType> getScaledSurfaceMap(RandomAccessibleInterval img, long offset, long originalDimX, long originalDimZ, OpService ops, float heightScaleFactor) {
+    public static RandomAccessibleInterval<DoubleType> getScaledSurfaceMap(RandomAccessibleInterval img, long offset, long originalDimX, long originalDimZ, OpService ops, float heightScaleFactor) {
         final Img<IntType> surfaceImg = process2( img, 5, 40, 20 );
 
         // Rescale height values (this was propagated to the calling method, because it should behave differently for subsampled images)
@@ -254,18 +254,19 @@ public class SurfaceFitCommand implements Command {
 //                new long[]{surfaceImg.max(0) + border[0], surfaceImg.max(1) + border[1]});
 //        RandomAccessibleInterval<IntType> res = ops.filter().gauss(extendedSurfaceImg, 2.0);// this parameter differs from Dagmar's
         // TODO get gaussian border stuff working
-        RandomAccessibleInterval<IntType> res = surfaceImg;
+
+        RandomAccessibleInterval<DoubleType> res = Converters.convert((RandomAccessibleInterval<IntType>) surfaceImg, (a, x) -> x.setReal(a.getRealDouble()), new DoubleType());
 
         long[] newDims = new long[]{originalDimX, originalDimZ};
 
-        NLinearInterpolatorFactory<IntType> interpolatorFactory = new NLinearInterpolatorFactory<>();
+        NLinearInterpolatorFactory<DoubleType> interpolatorFactory = new NLinearInterpolatorFactory<>();
 
         double[] scaleFactors = new double[]{(float) originalDimX / res.dimension(0), (float) originalDimZ / res.dimension(1)};
 
         //RealRandomAccessible<IntType> interp = Views.interpolate(Views.extendMirrorSingle(res), interpolatorFactory);
-        RealRandomAccessible<IntType> interp = Views.interpolate(Views.extendMirrorSingle(res), interpolatorFactory);
+        RealRandomAccessible<DoubleType> interp = Views.interpolate(Views.extendMirrorSingle(res), interpolatorFactory);
 
-        IntervalView<IntType> interval = Views.interval(Views.raster(RealViews.affineReal(
+        IntervalView<DoubleType> interval = Views.interval(Views.raster(RealViews.affineReal(
 			interp,
 			new Scale(scaleFactors))), new FinalInterval(newDims));
 
