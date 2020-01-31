@@ -20,6 +20,7 @@ import net.imglib2.realtransform.AffineTransform2D;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.realtransform.RealViews;
 import net.imglib2.realtransform.Scale;
+import net.imglib2.realtransform.Scale2D;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.integer.IntType;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
@@ -235,18 +236,11 @@ public class SurfaceFitCommand implements Command {
      * @param offset - this accounts for the fact that processing the "top" is run in an interval offset
      * @return
      */
-    public static RandomAccessibleInterval<DoubleType> getScaledSurfaceMap(RandomAccessibleInterval img, long offset, long originalDimX, long originalDimZ, OpService ops, float heightScaleFactor) {
+    public static RandomAccessibleInterval<DoubleType> getScaledSurfaceMap(RandomAccessibleInterval img, final int costStep) {
         final Img<IntType> surfaceImg = process2( img, 5, 40, 20 );
 
         // Rescale height values (this was propagated to the calling method, because it should behave differently for subsampled images)
         //float heightScaleFactor = ((float)originalDimX) / ((float)img.dimension(0));
-
-        Cursor<IntType> surfaceCur = surfaceImg.cursor();
-        while( surfaceCur.hasNext() ) {
-            surfaceCur.fwd();
-            surfaceCur.get().mul(heightScaleFactor);
-            surfaceCur.get().add(new IntType((int) offset));// FIXME beware of this casting
-        }
 
 //        long[] border = new long[]{10, 10};// TODO border chosen arbitrarily
 //        RandomAccessibleInterval<IntType> extendedSurfaceImg = Views.interval(Views.extendMirrorSingle(surfaceImg),
@@ -257,18 +251,18 @@ public class SurfaceFitCommand implements Command {
 
         RandomAccessibleInterval<DoubleType> res = Converters.convert((RandomAccessibleInterval<IntType>) surfaceImg, (a, x) -> x.setReal(a.getRealDouble()), new DoubleType());
 
-        long[] newDims = new long[]{originalDimX, originalDimZ};
-
         NLinearInterpolatorFactory<DoubleType> interpolatorFactory = new NLinearInterpolatorFactory<>();
 
-        double[] scaleFactors = new double[]{(float) originalDimX / res.dimension(0), (float) originalDimZ / res.dimension(1)};
-
         //RealRandomAccessible<IntType> interp = Views.interpolate(Views.extendMirrorSingle(res), interpolatorFactory);
-        RealRandomAccessible<DoubleType> interp = Views.interpolate(Views.extendMirrorSingle(res), interpolatorFactory);
+        RealRandomAccessible<DoubleType> interp = Views.interpolate(Views.extendBorder(res), interpolatorFactory);
 
-        IntervalView<DoubleType> interval = Views.interval(Views.raster(RealViews.affineReal(
-			interp,
-			new Scale(scaleFactors))), new FinalInterval(newDims));
+        IntervalView<DoubleType> interval = Views.interval(
+        		RealViews.affine(
+					interp,
+					new Scale2D(costStep, costStep)),
+        		new FinalInterval(
+        				(img.dimension(0) - 1) * costStep + 1,
+        				(img.dimension(1) - 1) * costStep + 1));
 
         return interval;
     }
