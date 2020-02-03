@@ -233,11 +233,11 @@ public class SurfaceFitCommand implements Command {
     /**
      *
      * @param img
-     * @param offset - this accounts for the fact that processing the "top" is run in an interval offset
+     * @param costStep - this is the step size that was used for subsampling
      * @return
      */
-    public static RandomAccessibleInterval<DoubleType> getScaledSurfaceMap(RandomAccessibleInterval img, final int costStep) {
-        final Img<IntType> surfaceImg = process2( img, 5, 40, 20 );
+    public static RandomAccessibleInterval<DoubleType> getScaledSurfaceMap(RandomAccessibleInterval img, final int costStep, final int smoothingConstraint) {
+        final Img<IntType> surfaceImg = process2( img, smoothingConstraint, 40, 20 );
 
         // Rescale height values (this was propagated to the calling method, because it should behave differently for subsampled images)
         //float heightScaleFactor = ((float)originalDimX) / ((float)img.dimension(0));
