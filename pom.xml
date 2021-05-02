@@ -8,7 +8,7 @@
     <parent>
     	<groupId>org.scijava</groupId>
 		<artifactId>pom-scijava</artifactId>
-		<version>28.0.0-SNAPSHOT</version>
+		<version>29.0.0-beta-3</version>
 		<relativePath/>
 	</parent>
 
@@ -89,8 +89,8 @@
 
 	<repositories>
 		<repository>
-			<id>imagej.public</id>
-			<url>http://maven.imagej.net/content/groups/public</url>
+			<id>scijava.public</id>
+			<url>https://maven.scijava.org/content/groups/public</url>
 		</repository>
 	</repositories>
 
@@ -126,7 +126,7 @@
 		<dependency>
 			<groupId>org.janelia.saalfeldlab</groupId>
 			<artifactId>n5-imglib2</artifactId>
-			<version>3.4.1</version>
+			<version>3.5.0</version>
 		</dependency>
 
 		<dependency>
@@ -178,7 +178,7 @@
 					<relocations>
 						<relocation>
 							<pattern>org.apache.commons.compress</pattern>
-							<shadedPattern>org.janelia.saalfeldlab.org.apache.commons.compress</shadedPattern>
+							<shadedPattern>org.org.janelia.saalfeldlab.org.apache.commons.compress</shadedPattern>
 						</relocation>
 					</relocations>
 				</configuration>
